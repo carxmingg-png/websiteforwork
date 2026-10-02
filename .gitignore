@@ -8,3 +8,5 @@ Thumbs.db
 .idea/
 keys.json
 verified_devices.json
+__pycache__/
+*.pyc

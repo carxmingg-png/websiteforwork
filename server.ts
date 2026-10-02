@@ -818,6 +818,216 @@ try {
   console.error("[STARTUP ERROR] Failed to load premium builds:", e.message);
 }
 
+// ── Bot.py Car Database (189 Authentic Builds) ───────────────────────────────
+export let BOT_CARS_189: Record<string, any> = {};
+try {
+  const possibleBotCarPaths = [
+    path.join(process.cwd(), "bot_cars_189.json"),
+    path.join(__dirname, "bot_cars_189.json")
+  ];
+  for (const p of possibleBotCarPaths) {
+    if (fs.existsSync(p)) {
+      BOT_CARS_189 = JSON.parse(fs.readFileSync(p, "utf-8"));
+      console.log(`[STARTUP] Successfully loaded ${Object.keys(BOT_CARS_189).length} authentic cars from bot_cars_189.json`);
+      break;
+    }
+  }
+} catch (e: any) {
+  console.error("[STARTUP ERROR] Failed to load bot_cars_189.json:", e.message);
+}
+
+// ── Bot.py Restore Profile Helper ───────────────────────────────────────────
+const RESTORE_PROFILE_PATH = path.join(process.cwd(), "restore_profile.json");
+export function getRestoreProfile(): any {
+  if (fs.existsSync(RESTORE_PROFILE_PATH)) {
+    try {
+      const backup = JSON.parse(fs.readFileSync(RESTORE_PROFILE_PATH, "utf-8"));
+      backup.data_version = (backup.data_version || 0) + 1;
+      backup.messaging_version = backup.messaging_version || 1;
+      backup.model_upgrade_version = backup.model_upgrade_version || 1;
+      return backup;
+    } catch (e: any) {
+      console.warn(`[RESTORE BACKUP] Failed reading restore_profile.json: ${e.message}`);
+    }
+  }
+  return null;
+}
+
+// ── Bot.py Ultimate Map Unlock Function ─────────────────────────────────────
+export function unlockMapsUltimate(profile: any): any {
+  if (!profile.game_world_parts) {
+    profile.game_world_parts = {};
+  }
+  for (const m of ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]) {
+    profile.game_world_parts[m] = { unlocked: true };
+  }
+
+  profile.real_estates = profile.real_estates || {};
+  profile.real_estate_slots = profile.real_estate_slots || {};
+
+  for (const prop of REAL_ESTATE_PROPERTIES) {
+    const slots = [
+      { unlocked: true, car_id: "", is_empty: true },
+      { unlocked: true, car_id: "", is_empty: true },
+      { unlocked: true, car_id: "", is_empty: true }
+    ];
+    if (!profile.real_estates[prop]) {
+      profile.real_estates[prop] = { is_bought: true, slots };
+    } else {
+      const existing = profile.real_estates[prop];
+      existing.is_bought = true;
+      if (!Array.isArray(existing.slots) || existing.slots.length !== 3) {
+        existing.slots = slots;
+      } else {
+        for (const slot of existing.slots) {
+          slot.unlocked = true;
+          if (slot.car_id === undefined) slot.car_id = "";
+        }
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const slotId = `${prop}_slot_${i}`;
+      if (!profile.real_estate_slots[slotId]) {
+        profile.real_estate_slots[slotId] = { unlocked: true, car_id: "" };
+      } else {
+        profile.real_estate_slots[slotId].unlocked = true;
+        if (profile.real_estate_slots[slotId].car_id === undefined) {
+          profile.real_estate_slots[slotId].car_id = "";
+        }
+      }
+    }
+  }
+
+  profile.locations = profile.locations || {};
+  profile.locations.default = profile.locations.default || {};
+  profile.locations.default.location_objects_set = profile.locations.default.location_objects_set || { keys: [] };
+  const locKeys: string[] = profile.locations.default.location_objects_set.keys;
+  const extraKeys = ["car_market_0", "car_showroom_0", "car_showroom_1", "car_showroom_2"];
+  for (const p of [...REAL_ESTATE_PROPERTIES, ...extraKeys]) {
+    if (!locKeys.includes(p)) {
+      locKeys.push(p);
+    }
+  }
+
+  profile.race_generators = profile.race_generators || {};
+  const ts = Math.floor(Date.now() / 1000);
+  const mountain = (profile.race_generators.game_world_mountain_farm_races = profile.race_generators.game_world_mountain_farm_races || {});
+  mountain.races_counter = { keys: ["mountain_race_farm_drift_DM001", "mountain_race_farm_sprint_ST001", "mountain_race_farm_free_drift_AO01", "mountain_race_farm_gymkhana_ao04"], values: [1, 2, 3, 4] };
+  mountain.races_set = { keys: ["mountain_race_farm_drift_DM005", "mountain_race_farm_sprint_ST004", "mountain_race_farm_free_drift_AO02", "mountain_race_farm_gymkhana_ao08"], values: [1, 2, 3, 4] };
+
+  const sunset = (profile.race_generators.game_world_sunset_farm_races = profile.race_generators.game_world_sunset_farm_races || {});
+  sunset.races_counter = { keys: ["speedway_race_farm_free_drift_AO01", "speedway_race_farm_sprint_DM01", "speedway_race_farm_sprint_DM05", "speedway_race_farm_gymkhana_ao01"], values: [1, 2, 3, 4] };
+  sunset.races_set = { keys: ["speedway_race_farm_free_drift_AO02", "speedway_race_farm_sprint_DM02", "speedway_race_simple_drift_DM01", "speedway_race_farm_gymkhana_ao01"], values: [1, 2, 3, 4] };
+
+  profile.races_ts = profile.races_ts || { keys: [], values: [] };
+  const allKeys = [
+    ...(mountain.races_counter?.keys || []),
+    ...(mountain.races_set?.keys || []),
+    ...(sunset.races_counter?.keys || []),
+    ...(sunset.races_set?.keys || [])
+  ];
+  for (const k of allKeys) {
+    if (!profile.races_ts.keys.includes(k)) {
+      profile.races_ts.keys.push(k);
+      profile.races_ts.values.push(ts);
+    }
+  }
+
+  profile.is_tutorial_finished = true;
+  profile.tutorial_step = 600;
+  return profile;
+}
+
+// ── Bot.py Implant Cars Logic ───────────────────────────────────────────────
+export function implantCarsFromBot(profile: any, carsToAdd: Record<string, any>): { profile: any; added: number } {
+  if (!carsToAdd || Object.keys(carsToAdd).length === 0) {
+    return { profile, added: 0 };
+  }
+  profile.cars = profile.cars || { seed: 1000, items: {} };
+  profile.cars.items = profile.cars.items || {};
+  const existing = profile.cars.items;
+
+  let maxId = 1000;
+  for (const cid in existing) {
+    const num = parseInt(cid, 10);
+    if (!isNaN(num) && num > maxId) {
+      maxId = num;
+    }
+  }
+
+  let added = 0;
+  for (const key of Object.keys(carsToAdd)) {
+    const cfg = carsToAdd[key];
+    if (!cfg || typeof cfg !== "object" || !cfg.__desc_id) continue;
+    maxId++;
+    existing[String(maxId)] = structuredClone(cfg);
+    added++;
+  }
+
+  profile.cars.seed = Math.max(1000, maxId + 1);
+  if (!existing[String(profile.current_car_id)]) {
+    profile.current_car_id = Object.keys(existing)[0] || "1000";
+  }
+
+  const activeModelsMap: Record<string, number> = {};
+  for (const cid in existing) {
+    const descId = existing[cid]?.__desc_id;
+    if (descId) {
+      activeModelsMap[descId] = (activeModelsMap[descId] || 0) + 1;
+    }
+  }
+  profile.car_models = {
+    keys: Object.keys(activeModelsMap),
+    values: Object.values(activeModelsMap).map(v => parseInt(v as any, 10) || 1)
+  };
+
+  return { profile, added };
+}
+
+// ── Bot.py Inject Currency Function ─────────────────────────────────────────
+export function injectCurrencyFromBot(profile: any, silver = 50000000, gold = 9999, xp = 999999): any {
+  if (!profile.resources) {
+    profile.resources = {};
+  }
+  profile.resources.soft = { amount: silver };
+  profile.resources.hard = { amount: gold };
+  profile.resources.experience = { award_index: calculateLevelFromExp(xp) || 50, amount: xp };
+  for (const key of ["battle_pass_points", "battle_pass_resource", "event_points", "ep", "bp"]) {
+    profile.resources[key] = { amount: 999999 };
+  }
+  profile.has_premium = true;
+  profile.is_premium_active = true;
+  profile.is_premium_max_player = true;
+  profile.premium_timer = 99999999;
+  profile.premium_length = 99999999;
+  profile.is_pass_owned = true;
+  profile.battle_pass_resource_amount = 999999;
+  return profile;
+}
+
+// ── Bot.py Max StreetPass Points Function ───────────────────────────────────
+export function maxStreetPassPointsFromBot(profile: any, points = 1000000): any {
+  if (!profile.resources) {
+    profile.resources = {};
+  }
+  profile.resources.street_pass = { amount: points };
+  profile.resources.battle_pass_points = { amount: points };
+  profile.resources.battle_pass_resource = { amount: points };
+  profile.resources.event_points = { amount: points };
+  profile.resources.ep = { amount: points };
+  profile.resources.bp = { amount: points };
+  profile.is_pass_owned = true;
+  profile.has_premium = true;
+  profile.is_premium_active = true;
+  profile.is_premium_max_player = true;
+  profile.premium_timer = 99999999;
+  profile.premium_length = 99999999;
+  profile.battle_pass_resource_amount = points;
+  if (!profile.postprogression_counter) profile.postprogression_counter = {};
+  if (!profile.battle_pass_event_rewards) profile.battle_pass_event_rewards = { keys: [] };
+  return profile;
+}
+
 
 function intParse(val: string): number {
   const p = parseInt(val, 10);
@@ -1501,6 +1711,31 @@ class CarXClient {
     return results.find(r => r !== null) || { success: false, response: null, message: "Save upload failed." };
   }
 
+  static async deleteAnonymous(email: string, pass: string, deviceId?: string) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const devId = deviceId || crypto.randomBytes(16).toString("hex");
+      const response = await fetch(`${BASE_URL}/delete/anonymous`, {
+        method: "POST",
+        headers: {
+          ...DEFAULT_HEADERS,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password: pass, device_id: devId }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.status === 200 || response.status === 201) {
+        return { success: true, message: "Account deleted anonymously." };
+      }
+      return { success: false, message: await response.text() };
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      return { success: false, message: e.message || "Failed to connect for anonymous deletion" };
+    }
+  }
+
   static async deleteAccount(token: string, email: string, pass: string) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -1540,6 +1775,58 @@ class CarXClient {
       clearTimeout(timeoutId);
       return { success: false, message: e.message || "Failed to connect for deletion" };
     }
+  }
+
+  static async deleteAccountAuto(email: string, pass: string, token?: string, deviceId?: string) {
+    // 1. Try anonymous delete (matching bot.py)
+    const anonRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
+    if (anonRes.success) {
+      return { success: true, method: "anonymous", message: "Account deleted successfully via anonymous API." };
+    }
+
+    // 2. Try with token
+    let activeToken = token;
+    if (!activeToken) {
+      const auth = await CarXClient.authenticate("login", email, pass, deviceId);
+      if (auth.success && auth.token) {
+        activeToken = auth.token;
+      }
+    }
+    if (activeToken) {
+      const tokenRes = await CarXClient.deleteAccount(activeToken, email, pass);
+      if (tokenRes.success) {
+        return { success: true, method: "token", message: "Account deleted successfully via token API." };
+      }
+    }
+
+    // 3. Retry anonymous
+    const retryRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
+    if (retryRes.success) {
+      return { success: true, method: "anonymous-retry", message: "Account deleted successfully on retry." };
+    }
+
+    return { success: false, message: "Failed to delete account across all methods." };
+  }
+
+  static async unlockStreetPassAuto(token: string, deviceId?: string, uniqueId?: string): Promise<boolean> {
+    const bpObj = JSON.parse(STREETPASS_BODY);
+    const epObj = JSON.parse(STREETPASS_BODY.replace(/com\.carxtech\.sr\.bank\.event\.bp/g, "com.carxtech.sr.bank.event.ep_big"));
+    
+    let bpOk = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      bpOk = await CarXClient.verifyStreetPass(token, bpObj, deviceId, uniqueId);
+      if (bpOk) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+    
+    if (bpOk) {
+      // Loop EP 3 times exactly like bot.py
+      for (let i = 0; i < 3; i++) {
+        await CarXClient.verifyStreetPass(token, epObj, deviceId, uniqueId).catch(() => false);
+      }
+      return true;
+    }
+    return false;
   }
 
   static async verifyStreetPass(token: string, bodyObj: any, deviceId?: string, uniqueId?: string) {
@@ -3301,9 +3588,17 @@ app.post(["/api/carx/login", "/carx/login"], authMiddleware, async (req, res) =>
 
 // CarX Account Register
 app.post(["/api/carx/register", "/carx/register"], authMiddleware, async (req, res) => {
-  const { email, password, deviceId, uniqueId, verify } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password are required." });
+  let { email, password, deviceId, uniqueId, verify, auto_mail, auto_password } = req.body;
+
+  if (auto_mail || !email) {
+    const user = "carx" + crypto.randomBytes(5).toString("hex");
+    email = user + "@carxming.com";
+  }
+  if (auto_password || !password) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let rand = "";
+    for (let i = 0; i < 8; i++) rand += chars[Math.floor(Math.random() * chars.length)];
+    password = "CarX@" + rand;
   }
 
   let result: Awaited<ReturnType<typeof CarXClient.authenticate>>;
@@ -3417,15 +3712,35 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
 });
 
 
-// CarX Account Delete
+// CarX Account Delete (Robust Anonymous + Token Auto Sequence from bot.py)
 app.post(["/api/carx/delete", "/carx/delete"], authMiddleware, async (req, res) => {
-  const { token, email, password } = req.body;
-  if (!token || !email || !password) {
-    return res.status(400).json({ success: false, message: "Token, email, and password are required." });
+  const { token, email, password, deviceId } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: "Email and password are required." });
   }
 
-  const result = await CarXClient.deleteAccount(token, email, password);
+  const result = await CarXClient.deleteAccountAuto(email, password, token, deviceId);
   res.json(result);
+});
+
+// CarX Account Restore Backup (from bot.py restore profile)
+app.post(["/api/carx/restore", "/carx/restore"], authMiddleware, async (req, res) => {
+  const { token, userId, deviceId, uniqueId } = req.body;
+  if (!token) {
+    return res.status(400).json({ success: false, message: "Token is required." });
+  }
+
+  const restoreProfile = getRestoreProfile();
+  if (!restoreProfile) {
+    return res.status(400).json({ success: false, message: "Restore backup file (restore_profile.json) not found." });
+  }
+
+  const upload = await CarXClient.uploadProfile(token, restoreProfile, userId, undefined, false, false, deviceId, uniqueId);
+  if (upload.success) {
+    const stats = extractProfileStats(restoreProfile, false);
+    return res.json({ success: true, message: "✅ Backup restored and uploaded successfully!", stats });
+  }
+  return res.status(400).json({ success: false, message: "Failed to upload restored backup profile to server." });
 });
 
 // CarX Account Unblock
@@ -3615,18 +3930,10 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     return res.status(400).json({ success: false, message: "Token and service_type are required." });
   }
 
-  // Block Premium and EP point features while under active development
-  if (service_type === "premium" || service_type === "custom_ep" || service_type === "streetpass_ep") {
-    return res.status(403).json({
-      success: false,
-      message: "⚠️ Feature Under Development: Premium Account and EP Point features are currently locked while under development."
-    });
-  }
-
   const role = (req as any).role;
   const licenseKey = (req as any).licenseKey;
 
-  // Map service_type to feature ID
+  // Map service_type to feature ID (supporting both legacy & bot.py actions)
   const featureMap: Record<string, string> = {
     cash: "cash_gold",
     gold: "cash_gold",
@@ -3635,16 +3942,29 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     level: "level_xp",
     unlock_clubs: "unlock_clubs",
     get_all_cars: "get_all_cars",
+    add_cars_all: "get_all_cars",
+    add_cars_50: "get_all_cars",
+    add_cars_random: "get_all_cars",
     safe_repair: "safe_repair",
     battlepass: "battlepass",
+    menu_sp: "battlepass",
     custom_ep: "streetpass_ep",
+    streetpass_ep: "streetpass_ep",
     inject_all: "cash_gold",
     inject_everything: "cash_gold",
+    menu_all: "cash_gold",
     unlock_profile_style: "battlepass",
     inject_car: "get_all_cars",
     inject_cars: "get_all_cars",
     inject_random_cars: "get_all_cars",
-    premium: "premium"
+    premium: "premium",
+    inject_max: "cash_gold",
+    inject_med: "cash_gold",
+    currency_max: "cash_gold",
+    currency_med: "cash_gold",
+    menu_maps: "unlock_clubs",
+    menu_restore: "safe_repair",
+    restore: "safe_repair"
   };
 
   // Credit cost map for each injection service_type
@@ -3656,16 +3976,29 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     level: 1,
     unlock_clubs: 3,
     get_all_cars: 4,
+    add_cars_all: 4,
+    add_cars_50: 3,
+    add_cars_random: 2,
     safe_repair: 1,
     battlepass: 5,
+    menu_sp: 5,
     custom_ep: 2,
+    streetpass_ep: 2,
     inject_all: 3,
     inject_everything: 15,
+    menu_all: 15,
     premium: 5,
     unlock_profile_style: 3,
     inject_car: 1,
     inject_cars: 1,
-    inject_random_cars: 2
+    inject_random_cars: 2,
+    inject_max: 3,
+    inject_med: 2,
+    currency_max: 3,
+    currency_med: 2,
+    menu_maps: 3,
+    menu_restore: 2,
+    restore: 2
   };
 
   let creditCost = creditCostMap[service_type] || 1;
@@ -3792,15 +4125,21 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
 
   try {
     // ── Handle profile-based injections (get profile + modify + upload) ──────────
-    const profileTypes = ["cash", "gold", "exp", "level", "unlock_clubs", "get_all_cars", "custom_resource", "safe_repair", "unlock_profile_style", "inject_car", "inject_cars", "inject_random_cars", "battlepass", "custom_ep"];
+    const profileTypes = [
+      "cash", "gold", "exp", "level", "unlock_clubs", "get_all_cars",
+      "custom_resource", "safe_repair", "unlock_profile_style", "inject_car",
+      "inject_cars", "inject_random_cars", "battlepass", "custom_ep", "streetpass_ep",
+      "inject_max", "inject_med", "currency_max", "currency_med", "menu_maps",
+      "add_cars_all", "add_cars_50", "add_cars_random", "menu_sp", "restore", "menu_restore"
+    ];
 
     if (profileTypes.includes(service_type)) {
       // First trigger and wait for StreetPass and EP verification to complete if requested.
       // This ensures that any updated event/streetpass state exists in the game server's database
       // before we fetch the profile, preventing the subsequent profile upload from overwriting/wiping it.
       let spResult = false;
-      if (unlock_streetpass || service_type === "battlepass" || service_type === "custom_ep") {
-        spResult = await CarXClient.verifyStreetPass(token, JSON.parse(STREETPASS_BODY), deviceId, uniqueId);
+      if (unlock_streetpass || service_type === "battlepass" || service_type === "custom_ep" || service_type === "menu_sp") {
+        spResult = await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
       }
 
       if (inject_ep) {
@@ -3815,7 +4154,7 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       const optStreetPassSuccess = spResult;
       const { profile, response, isWrappedInD, isWrappedInData } = profileResult;
 
-      if (!profile && service_type !== "safe_repair") {
+      if (!profile && service_type !== "safe_repair" && service_type !== "restore" && service_type !== "menu_restore") {
         return res.status(400).json({ success: false, message: "Failed to download profile. Check account status." });
       }
 
@@ -3849,6 +4188,43 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         if (get_all_cars) successMsg += " (All Cars Injected)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
+      } else if (service_type === "inject_max" || service_type === "currency_max") {
+        modified = injectCurrencyFromBot(profile, 50000000, 9999, 999999);
+        successMsg = "✅ Maximum Currency & Premium Boost injected successfully (50M Cash, 9,999 Gold, 999,999 EXP, StreetPass & Premium)!";
+      } else if (service_type === "inject_med" || service_type === "currency_med") {
+        modified = injectCurrencyFromBot(profile, 10000000, 5000, 100000);
+        successMsg = "✅ Medium Currency Boost injected successfully (10M Cash, 5,000 Gold, 100,000 EXP)!";
+      } else if (service_type === "menu_maps") {
+        modified = unlockMapsUltimate(profile);
+        successMsg = "✅ All 6 Maps, 53 Properties, Garages, Locations, and Race Generators unlocked successfully!";
+      } else if (service_type === "add_cars_all") {
+        const { added } = implantCarsFromBot(profile, BOT_CARS_189);
+        successMsg = `✅ Successfully implanted all ${added} authentic cars from bot database into your garage!`;
+      } else if (service_type === "add_cars_50") {
+        const first50Keys = Object.keys(BOT_CARS_189).slice(0, 50);
+        const subset: Record<string, any> = {};
+        for (const k of first50Keys) subset[k] = BOT_CARS_189[k];
+        const { added } = implantCarsFromBot(profile, subset);
+        successMsg = `✅ Successfully implanted ${added} cars into your garage!`;
+      } else if (service_type === "add_cars_random") {
+        const count = parseInt(random_cars_count || custom_amount || 10, 10) || 10;
+        const allKeys = Object.keys(BOT_CARS_189);
+        const shuffled = allKeys.sort(() => 0.5 - Math.random()).slice(0, count);
+        const subset: Record<string, any> = {};
+        for (const k of shuffled) subset[k] = BOT_CARS_189[k];
+        const { added } = implantCarsFromBot(profile, subset);
+        successMsg = `✅ Successfully implanted ${added} random cars into your garage!`;
+      } else if (service_type === "menu_sp") {
+        await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
+        modified = maxStreetPassPointsFromBot(profile, 1000000);
+        successMsg = "✅ StreetPass verified and 1,000,000 Event Points activated!";
+      } else if (service_type === "restore" || service_type === "menu_restore") {
+        const restoreData = getRestoreProfile();
+        if (!restoreData) {
+          return res.status(400).json({ success: false, message: "Restore backup file (restore_profile.json) not found." });
+        }
+        modified = restoreData;
+        successMsg = "✅ Backup profile successfully restored and uploaded!";
       } else if (service_type === "unlock_clubs") {
         modified = modifyProfile(profile, { unlock_clubs: true, unlock_houses, get_all_cars }, userId);
         successMsg = "Successfully unlocked and completed all 7 Clubs!";
@@ -3857,8 +4233,14 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
       } else if (service_type === "get_all_cars") {
-        modified = modifyProfile(profile, { get_all_cars: true, unlock_houses, unlock_clubs }, userId);
-        successMsg = "Successfully parked all 69 cars in your garage! Turn on/off your game to sync.";
+        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
+          const { added } = implantCarsFromBot(profile, BOT_CARS_189);
+          modified = profile;
+          successMsg = `Successfully parked all ${added} cars in your garage! Turn on/off your game to sync.`;
+        } else {
+          modified = modifyProfile(profile, { get_all_cars: true, unlock_houses, unlock_clubs }, userId);
+          successMsg = "Successfully parked all 69 cars in your garage! Turn on/off your game to sync.";
+        }
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_clubs) successMsg += " (All Clubs Unlocked)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
@@ -3923,17 +4305,24 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         if (isNaN(count) || count <= 0) {
           return res.status(400).json({ success: false, message: "A valid positive random_cars_count is required." });
         }
-        modified = modifyProfile(profile, {
-          random_cars_count: count
-        }, userId);
-        successMsg = `✅ Injected ${count} random cars into your garage successfully!`;
-      } else if (service_type === "battlepass" || service_type === "custom_ep") {
-        modified = modifyProfile(profile, {
-          unlock_profile_style: true
-        }, userId);
-        successMsg = service_type === "battlepass"
-          ? "✅ Premium StreetPass successfully verified & activated! Unlocked all avatars, frames, banners, and quick chats."
-          : "✅ Event Points (EP) successfully simulated! Unlocked all 16 avatars, 16 frames, 16 banners, and 4 quick chats.";
+        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
+          const allKeys = Object.keys(BOT_CARS_189);
+          const shuffled = allKeys.sort(() => 0.5 - Math.random()).slice(0, count);
+          const subset: Record<string, any> = {};
+          for (const k of shuffled) subset[k] = BOT_CARS_189[k];
+          const { added } = implantCarsFromBot(profile, subset);
+          modified = profile;
+          successMsg = `✅ Injected ${added} random cars from bot database into your garage successfully!`;
+        } else {
+          modified = modifyProfile(profile, {
+            random_cars_count: count
+          }, userId);
+          successMsg = `✅ Injected ${count} random cars into your garage successfully!`;
+        }
+      } else if (service_type === "battlepass" || service_type === "custom_ep" || service_type === "streetpass_ep") {
+        await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
+        modified = maxStreetPassPointsFromBot(profile, 1000000);
+        successMsg = "✅ Premium StreetPass successfully verified & 1,000,000 Event Points activated! Unlocked all avatars, frames, banners, and quick chats.";
       }
 
       const upload = await CarXClient.uploadProfile(token, modified, userId, response, isWrappedInD, isWrappedInData, deviceId, uniqueId);
@@ -3950,23 +4339,21 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       return res.status(400).json({ success: false, message: "Failed to upload injected profile to server." });
     }
 
-    // ── inject_all / inject_everything ──────────────────────────────────────────
-    if (service_type === "inject_all" || service_type === "inject_everything") {
-      const isEverything = service_type === "inject_everything";
+    // ── inject_all / inject_everything / menu_all ───────────────────────────────
+    if (service_type === "inject_all" || service_type === "inject_everything" || service_type === "menu_all") {
+      const isEverything = service_type === "inject_everything" || service_type === "menu_all";
       const shouldUnlockSP = unlock_streetpass || isEverything;
       const shouldInjectEP = inject_ep || isEverything;
 
-      // Run SP verify and EP loops first, and wait for completion.
-      // This ensures the database is fully updated before we fetch the profile to avoid resetting values.
       let bpSuccess = false;
       if (shouldUnlockSP) {
-        bpSuccess = await CarXClient.verifyStreetPass(token, JSON.parse(STREETPASS_BODY), deviceId, uniqueId);
+        bpSuccess = await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
       }
 
-      if (shouldInjectEP) {
+      if (shouldInjectEP && !shouldUnlockSP) {
         const epObj = JSON.parse(STREETPASS_BODY.replace(/com\.carxtech\.sr\.bank\.event\.bp/g, "com.carxtech.sr.bank.event.ep_big"));
         await Promise.all(
-          Array.from({ length: 5 }, () => CarXClient.verifyStreetPass(token, epObj, deviceId, uniqueId))
+          Array.from({ length: 3 }, () => CarXClient.verifyStreetPass(token, epObj, deviceId, uniqueId))
         );
       }
 
@@ -3978,16 +4365,26 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         return res.status(400).json({ success: false, message: "Failed to download profile." });
       }
 
-      const modified = modifyProfile(profile, {
-        cash: 99000000,
-        gold: 99000000,
-        level: 50,
-        exp: 93060,
-        unlock_clubs: unlock_clubs || isEverything,
-        get_all_cars: get_all_cars || isEverything,
-        unlock_houses: unlock_houses || isEverything,
-        unlock_profile_style: isEverything
-      }, userId);
+      let modified: any;
+      if (isEverything) {
+        modified = unlockMapsUltimate(profile);
+        modified = injectCurrencyFromBot(modified, 50000000, 9999, 999999);
+        modified = maxStreetPassPointsFromBot(modified, 1000000);
+        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
+          implantCarsFromBot(modified, BOT_CARS_189);
+        }
+      } else {
+        modified = modifyProfile(profile, {
+          cash: 50000000,
+          gold: 9999,
+          level: 50,
+          exp: 999999,
+          unlock_clubs: true,
+          get_all_cars: true,
+          unlock_houses: true,
+          unlock_profile_style: true
+        }, userId);
+      }
 
       const upload = await CarXClient.uploadProfile(token, modified, userId, response, isWrappedInD, isWrappedInData, deviceId, uniqueId);
       if (upload.success) {
