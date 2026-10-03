@@ -7,6 +7,7 @@ import { MongoClient } from "mongodb";
 import zlib from "zlib";
 
 dotenv.config();
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -526,6 +527,38 @@ try {
 }
 
 const PROFILE_TEMPLATE = cachedProfileTemplate;
+
+// Bot Blueprint loader matching bot.py (starter profile with 2 cars, completed intro, and 21k cash)
+let BOT_BLUEPRINT: any = null;
+try {
+  const bpPath = path.join(process.cwd(), "bot_blueprint.json");
+  if (fs.existsSync(bpPath)) {
+    BOT_BLUEPRINT = JSON.parse(fs.readFileSync(bpPath, "utf-8"));
+    console.log("[BOT BLUEPRINT] Successfully loaded bot_blueprint.json!");
+  }
+} catch (e) {
+  console.warn("[BOT BLUEPRINT] Could not load bot_blueprint.json:", e);
+}
+
+export function getBotBlueprint(): any {
+  if (_dbCache?.custom_blueprint_string) {
+    try {
+      const decoded = Buffer.from(_dbCache.custom_blueprint_string, "base64");
+      let decomp: Buffer;
+      try {
+        decomp = zlib.gunzipSync(decoded.subarray(4));
+      } catch {
+        decomp = zlib.gunzipSync(decoded);
+      }
+      return JSON.parse(decomp.toString("utf-8"));
+    } catch (e) {
+      console.warn("[BOT BLUEPRINT] Failed to decode custom_blueprint_string:", e);
+    }
+  }
+  if (BOT_BLUEPRINT) return structuredClone(BOT_BLUEPRINT);
+  if (PROFILE_TEMPLATE) return structuredClone(PROFILE_TEMPLATE);
+  return null;
+}
 
 export function unwrapProfilePayload(profile: any): any {
   if (!profile || typeof profile !== "object") return profile;
@@ -1271,7 +1304,137 @@ class CarXClient {
       .catch(e => console.log("[CARX DEVICE REG ERROR] Skipped:", e));
   }
 
+  // 🤖 Exact registration flow from bot.py (2-step guest token exchange)
+  static async register(email: string, pass: string, customDeviceId?: string, customUniqueId?: string) {
+    const deviceId = (customDeviceId || crypto.randomUUID().replace(/-/g, "")).slice(0, 32);
+    const uniqueId = (customUniqueId || deviceId).slice(0, 32);
+    const userAgent = "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)";
+
+    // Fire-and-forget device registration
+    CarXClient.registerDevice(deviceId);
+
+    try {
+      // Step 1: Guest register to obtain guest token
+      const form1 = new URLSearchParams({
+        project: "STREET",
+        deviceId: deviceId,
+        deviceUniqueId: uniqueId
+      });
+
+      const controller1 = new AbortController();
+      const timeoutId1 = setTimeout(() => controller1.abort(), 20000);
+      const res1 = await fetch(`${BASE_URL}/register`, {
+        method: "POST",
+        headers: {
+          "User-Agent": userAgent,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: form1.toString(),
+        signal: controller1.signal
+      });
+      clearTimeout(timeoutId1);
+
+      if (res1.status !== 200 && res1.status !== 201) {
+        const errText = await res1.text().catch(() => "");
+        return { success: false, message: "Guest token failed: " + errText };
+      }
+
+      const j1 = await res1.json().catch(() => null);
+      const gt = (j1?.d || j1)?.token;
+      if (!gt) {
+        return { success: false, message: "No guest token received" };
+      }
+
+      // Step 2: Register user credentials with guest token authorization
+      const form2 = new URLSearchParams({
+        project: "STREET",
+        username: email,
+        password: pass,
+        deviceId: deviceId,
+        deviceUniqueId: uniqueId
+      });
+
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 20000);
+      const res2 = await fetch(`${BASE_URL}/register`, {
+        method: "POST",
+        headers: {
+          "User-Agent": userAgent,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${gt}`
+        },
+        body: form2.toString(),
+        signal: controller2.signal
+      });
+      clearTimeout(timeoutId2);
+
+      const j2 = await res2.json().catch(() => null);
+      if ((res2.status === 200 || res2.status === 201) && j2?.d?.token) {
+        const token = j2.d.token;
+        const userId = j2.d.carxId || j2.d.carx_id || j2.d.id || j2.d.userId;
+        return {
+          success: true,
+          token,
+          userId,
+          deviceId,
+          uniqueId,
+          unipId: uniqueId,
+          data: j2.d
+        };
+      }
+
+      let errMsg = "Registration failed";
+      if (j2) {
+        errMsg = j2.e?.message || j2.message || JSON.stringify(j2);
+      }
+      return { success: false, message: errMsg, deviceId, uniqueId };
+    } catch (e: any) {
+      return { success: false, message: e.message || "Network Connection Error" };
+    }
+  }
+
+  // 🤖 Exact save_profile from bot.py with binary GZIP compression and retries
+  static async saveProfile(token: string, profile: any, retries = 3) {
+    const userAgent = "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)";
+    let b64 = "";
+    try {
+      b64 = compressProfileToBinaryBase64(profile);
+    } catch (e: any) {
+      return { success: false, message: "Profile compression failed: " + e.message };
+    }
+
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const res = await fetch(`${GAME_BASE_URL}/profiles`, {
+          method: "POST",
+          headers: {
+            "User-Agent": userAgent,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": fToken(token)
+          },
+          body: JSON.stringify({ compressed_data: b64 }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.status === 200 || res.status === 201 || res.status === 204) {
+          return { success: true };
+        }
+        await new Promise(r => setTimeout(r, 1500));
+      } catch {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    return { success: false, message: "Save profile failed after retries" };
+  }
+
   static async authenticate(endpoint: "login" | "register", email: string, pass: string, customDeviceId?: string, customUniqueId?: string) {
+    if (endpoint === "register") {
+      return await CarXClient.register(email, pass, customDeviceId, customUniqueId);
+    }
+
     try {
       const deviceId = customDeviceId || crypto.randomBytes(8).toString("hex");
       const uniqueId = customUniqueId || crypto.randomUUID().replace(/-/g, "");
@@ -1289,10 +1452,6 @@ class CarXClient {
         platform: "android",
         project: 4
       };
-
-      if (endpoint === "register") {
-        payload.name = email.split("@")[0];
-      }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -3631,6 +3790,18 @@ app.post(["/api/carx/register", "/carx/register"], authMiddleware, async (req, r
   }
 
   if (result.success) {
+    // 🤖 EXACTLY LIKE THE BOT: Inject the starter blueprint save right away!
+    try {
+      const blueprint = getBotBlueprint();
+      if (blueprint && result.token) {
+        console.log(`[REGISTER] 💾 Injecting bot blueprint profile for ${email}...`);
+        const saveRes = await CarXClient.saveProfile(result.token, blueprint);
+        console.log(`[REGISTER] Blueprint injection result for ${email}:`, saveRes.success ? "✅ OK" : `❌ ${saveRes.message}`);
+      }
+    } catch (e: any) {
+      console.error("[REGISTER] Failed to inject blueprint save:", e.message || e);
+    }
+
     try {
       const db = await loadKeysDb();
       db.total_accounts_generated = (db.total_accounts_generated || 0) + 1;
@@ -3641,7 +3812,7 @@ app.post(["/api/carx/register", "/carx/register"], authMiddleware, async (req, r
 
     await CarXClient.fetchAndAttachProfileStats(result);
   }
-  res.json(result);
+  res.json({ ...result, email, password });
 });
 
 
