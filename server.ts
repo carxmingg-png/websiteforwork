@@ -528,34 +528,61 @@ try {
 
 const PROFILE_TEMPLATE = cachedProfileTemplate;
 
-// Bot Blueprint loader matching bot.py (starter profile with 2 cars, completed intro, and 21k cash)
+import {
+  BOT_COMPRESSED_STRING,
+  BOT_COMPRESSED_CARS_STRING
+} from "./bot_blueprint_string";
+
+// Exact string aliases from bot.py
+export const COMPRESSED_STRING = BOT_COMPRESSED_STRING;
+export const COMPRESSED_CARS_STRING = BOT_COMPRESSED_CARS_STRING;
+
+// Decompress helper matching decompress_data(s) from bot.py: json.loads(gzip.decompress(raw[4:]))
+export function decompressData(s: string): any {
+  if (!s) return null;
+  try {
+    const raw = Buffer.from(s, "base64");
+    try {
+      return JSON.parse(zlib.gunzipSync(raw.subarray(4)).toString("utf-8"));
+    } catch {
+      return JSON.parse(zlib.gunzipSync(raw).toString("utf-8"));
+    }
+  } catch {
+    return null;
+  }
+}
+
+// Bot Blueprint loader matching bot.py (starter profile with Supra, completed intro, and 21k cash)
 let BOT_BLUEPRINT: any = null;
 try {
-  const bpPath = path.join(process.cwd(), "bot_blueprint.json");
-  if (fs.existsSync(bpPath)) {
-    BOT_BLUEPRINT = JSON.parse(fs.readFileSync(bpPath, "utf-8"));
-    console.log("[BOT BLUEPRINT] Successfully loaded bot_blueprint.json!");
+  BOT_BLUEPRINT = decompressData(COMPRESSED_STRING);
+  if (BOT_BLUEPRINT) {
+    console.log("[BOT BLUEPRINT] Successfully decompressed starter blueprint from COMPRESSED_STRING!");
   }
 } catch (e) {
-  console.warn("[BOT BLUEPRINT] Could not load bot_blueprint.json:", e);
+  console.warn("[BOT BLUEPRINT] Error decompressing COMPRESSED_STRING:", e);
+}
+
+if (!BOT_BLUEPRINT) {
+  try {
+    const bpPath = path.join(process.cwd(), "bot_blueprint.json");
+    if (fs.existsSync(bpPath)) {
+      BOT_BLUEPRINT = JSON.parse(fs.readFileSync(bpPath, "utf-8"));
+      console.log("[BOT BLUEPRINT] Successfully loaded bot_blueprint.json fallback!");
+    }
+  } catch (e) {
+    console.warn("[BOT BLUEPRINT] Could not load bot_blueprint.json:", e);
+  }
 }
 
 export function getBotBlueprint(): any {
   if (_dbCache?.custom_blueprint_string) {
-    try {
-      const decoded = Buffer.from(_dbCache.custom_blueprint_string, "base64");
-      let decomp: Buffer;
-      try {
-        decomp = zlib.gunzipSync(decoded.subarray(4));
-      } catch {
-        decomp = zlib.gunzipSync(decoded);
-      }
-      return JSON.parse(decomp.toString("utf-8"));
-    } catch (e) {
-      console.warn("[BOT BLUEPRINT] Failed to decode custom_blueprint_string:", e);
-    }
+    const custom = decompressData(_dbCache.custom_blueprint_string);
+    if (custom) return custom;
   }
   if (BOT_BLUEPRINT) return structuredClone(BOT_BLUEPRINT);
+  const decomp = decompressData(COMPRESSED_STRING);
+  if (decomp) return decomp;
   if (PROFILE_TEMPLATE) return structuredClone(PROFILE_TEMPLATE);
   return null;
 }
@@ -851,22 +878,64 @@ try {
   console.error("[STARTUP ERROR] Failed to load premium builds:", e.message);
 }
 
-// ── Bot.py Car Database (189 Authentic Builds) ───────────────────────────────
+// ── Bot.py Car Database (189 Authentic Builds from COMPRESSED_CARS_STRING) ───
+export function extractCarsFromCompressed(s: string): Record<string, any> | null {
+  if (!s) return null;
+  const data = decompressData(s);
+  if (!data) return null;
+  let cars: Record<string, any> = {};
+  if (typeof data === "object") {
+    if (data.cars && typeof data.cars === "object" && data.cars.items) {
+      cars = data.cars.items;
+    } else {
+      for (const v of Object.values(data)) {
+        if (v && typeof v === "object" && (v as any).__desc_id) {
+          cars = data;
+          break;
+        }
+      }
+    }
+  }
+  if (!cars || Object.keys(cars).length === 0) return null;
+  const extracted: Record<string, any> = {};
+  for (const [cid, cfg] of Object.entries(cars)) {
+    if (cfg && typeof cfg === "object" && (cfg as any).__desc_id) {
+      extracted[String(cid)] = JSON.parse(JSON.stringify(cfg));
+    }
+  }
+  return Object.keys(extracted).length > 0 ? extracted : null;
+}
+
 export let BOT_CARS_189: Record<string, any> = {};
 try {
-  const possibleBotCarPaths = [
-    path.join(process.cwd(), "bot_cars_189.json"),
-    path.join(__dirname, "bot_cars_189.json")
-  ];
-  for (const p of possibleBotCarPaths) {
-    if (fs.existsSync(p)) {
-      BOT_CARS_189 = JSON.parse(fs.readFileSync(p, "utf-8"));
-      console.log(`[STARTUP] Successfully loaded ${Object.keys(BOT_CARS_189).length} authentic cars from bot_cars_189.json`);
-      break;
+  // First decompress directly from COMPRESSED_CARS_STRING copied from bot.py
+  if (COMPRESSED_CARS_STRING) {
+    const extracted = extractCarsFromCompressed(COMPRESSED_CARS_STRING);
+    if (extracted) {
+      BOT_CARS_189 = extracted;
+      console.log(`[STARTUP] Successfully decompressed ${Object.keys(BOT_CARS_189).length} authentic cars from COMPRESSED_CARS_STRING!`);
     }
   }
 } catch (e: any) {
-  console.error("[STARTUP ERROR] Failed to load bot_cars_189.json:", e.message);
+  console.warn("[STARTUP] Error decompressing COMPRESSED_CARS_STRING:", e?.message || e);
+}
+
+if (Object.keys(BOT_CARS_189).length === 0) {
+  try {
+    const possibleBotCarPaths = [
+      path.join(process.cwd(), "bot_cars_189.json"),
+      path.join(__dirname, "bot_cars_189.json")
+    ];
+    for (const p of possibleBotCarPaths) {
+      if (fs.existsSync(p)) {
+        BOT_CARS_189 = JSON.parse(fs.readFileSync(p, "utf-8"));
+        console.log(`[STARTUP] Successfully loaded ${Object.keys(BOT_CARS_189).length} authentic cars from bot_cars_189.json`);
+        break;
+      }
+    }
+  } catch (e: any) {
+    console.error("[STARTUP ERROR] Failed to load bot_cars_189.json:", e.message);
+  }
 }
 
 // ── Bot.py Restore Profile Helper ───────────────────────────────────────────
