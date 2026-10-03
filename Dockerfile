@@ -5,8 +5,8 @@ WORKDIR /app
 COPY package*.json tsconfig.json vite.config.ts index.html ./
 COPY public ./public
 COPY src ./src
-COPY server.ts ./
-COPY profile_template.ts* ./
+COPY *.ts ./
+COPY *.json ./
 COPY keys* ./
 
 RUN npm install
@@ -23,7 +23,8 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/profile_template.ts* ./
+COPY --from=builder /app/*.json ./
+COPY --from=builder /app/*.ts ./
 COPY --from=builder /app/keys* ./
 
 EXPOSE 10000
