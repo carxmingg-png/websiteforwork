@@ -1137,7 +1137,7 @@ function intParse(val: string): number {
 }
 
 // Shared helper to extract profile stats from various CarX API response structures
-function extractProfileStats(profile: any, debug = false) {
+export function extractProfileStats(profile: any, debug = false) {
   // Debug logging removed
 
   // Resolve the actual resources object - CarX API may wrap in many ways
@@ -1294,7 +1294,7 @@ function extractProfileStats(profile: any, debug = false) {
 
   // Extract Fleet list
   const carsList: Array<{ id: string; descId: string; mileage?: number; rating?: number }> = [];
-  for (const cid of carIds.slice(0, 150)) {
+  for (const cid of carIds) {
     const c = carsObj[cid];
     if (c) {
       carsList.push({
@@ -2367,39 +2367,8 @@ export function sanitizeCarToRealEstateSlot(profile: any): void {
     }
   }
 
-  const sortedCandidates = getPrioritizedSlots(profile);
-  for (const cid of ownedCarIds) {
-    const cidStr = String(cid);
-    if (!carsWithSlots.has(cidStr)) {
-      let assignedSlot = "";
-      for (const candidate of sortedCandidates) {
-        if (!usedSlots.has(candidate)) {
-          assignedSlot = candidate;
-          break;
-        }
-      }
-
-      if (assignedSlot) {
-        usedSlots.add(assignedSlot);
-        carsWithSlots.add(cidStr);
-        validKeys.push(cidStr);
-        validValues.push(assignedSlot);
-
-        const houseName = assignedSlot.substring(0, assignedSlot.lastIndexOf("_slot_"));
-        profile.real_estates[houseName] = profile.real_estates[houseName] || { is_bought: true };
-        profile.real_estates[houseName].is_bought = true;
-        profile.real_estate_slots[assignedSlot] = profile.real_estate_slots[assignedSlot] || {};
-        profile.real_estate_slots[assignedSlot].unlocked = true;
-        profile.real_estate_slots[assignedSlot].car_id = cidStr;
-
-        if (!locationKeysSet.has(houseName)) {
-          profile.locations.default.location_objects_set.keys.push(houseName);
-          locationKeysSet.add(houseName);
-        }
-      }
-    }
-  }
-
+  // Raw cars are NOT automatically assigned to empty real estate slots or garages.
+  // Only existing explicitly assigned cars remain in slots.
   profile.car_to_real_estate_slot.keys = validKeys;
   profile.car_to_real_estate_slot.values = validValues;
 
@@ -3047,7 +3016,7 @@ export function modifyProfile(
   profile.real_estate_slots["apartment_95_slot_0"] = profile.real_estate_slots["apartment_95_slot_0"] || {};
   profile.real_estate_slots["apartment_95_slot_0"].unlocked = true;
 
-  // 7. Cars Injection
+  // 7. Cars Injection (Raw inventory only - NO slots, NO garages)
   profile.cars = profile.cars || { seed: 1000, items: {} };
   profile.cars.items = profile.cars.items || {};
 
@@ -3065,10 +3034,11 @@ export function modifyProfile(
   const carsToInject: string[] = [];
 
   if (mods.get_all_cars || (mods.custom_cars_amount && mods.custom_cars_amount >= ALL_CARS_LIST.length)) {
+    // Add all cars from ALL_CARS_LIST that are not yet owned, so total becomes ALL_CARS_LIST.length
     for (const descId of ALL_CARS_LIST) {
       const cleanDesc = (ID_SELF_HEAL_MAP[descId] || descId).replace(/^car_/, "").replace(/_sp[12]/g, "");
       if (BANNED_UNRELEASED_CAR_IDS.has(cleanDesc)) continue;
-      if (!existingDescIds.has(cleanDesc) && !carsToInject.includes(cleanDesc)) {
+      if (!existingDescIds.has(cleanDesc)) {
         carsToInject.push(cleanDesc);
       }
     }
@@ -3077,25 +3047,28 @@ export function modifyProfile(
   if (mods.inject_cars && Array.isArray(mods.inject_cars)) {
     for (const c of mods.inject_cars) {
       const clean = (ID_SELF_HEAL_MAP[c] || c).replace(/^car_/, "").replace(/_sp[12]/g, "");
-      if (!carsToInject.includes(clean)) carsToInject.push(clean);
+      if (!BANNED_UNRELEASED_CAR_IDS.has(clean)) carsToInject.push(clean);
     }
   }
 
   if (mods.inject_car) {
     const clean = (ID_SELF_HEAL_MAP[mods.inject_car] || mods.inject_car).replace(/^car_/, "").replace(/_sp[12]/g, "");
-    if (!carsToInject.includes(clean)) carsToInject.push(clean);
+    if (!BANNED_UNRELEASED_CAR_IDS.has(clean)) carsToInject.push(clean);
   }
 
   if (mods.random_cars_count && mods.random_cars_count > 0 && !mods.get_all_cars) {
     const availableCars = ALL_CARS_LIST
       .map(c => (ID_SELF_HEAL_MAP[c] || c).replace(/^car_/, "").replace(/_sp[12]/g, ""))
-      .filter(c => !BANNED_UNRELEASED_CAR_IDS.has(c) && !existingDescIds.has(c) && !carsToInject.includes(c));
-    const toInject = availableCars.slice(0, mods.random_cars_count);
+      .filter(c => !BANNED_UNRELEASED_CAR_IDS.has(c) && !existingDescIds.has(c));
+    const pool = availableCars.length >= mods.random_cars_count ? availableCars : ALL_CARS_LIST;
+    const shuffled = pool.slice().sort(() => 0.5 - Math.random());
+    const toInject = shuffled.slice(0, mods.random_cars_count);
     for (const car of toInject) {
-      if (!carsToInject.includes(car)) carsToInject.push(car);
+      carsToInject.push(car);
     }
   }
 
+  const nowTs = Math.floor(Date.now() / 1000);
   for (const descId of carsToInject) {
     if (BANNED_UNRELEASED_CAR_IDS.has(descId)) continue;
     const newIdStr = String(nextCarId);
@@ -3118,32 +3091,21 @@ export function modifyProfile(
     if (carObj) {
       carObj.__desc_id = descId;
       carObj.is_bought = true;
+      carObj.consumed_resources = carObj.consumed_resources || {};
+      carObj.consumed_resources.gasoline = { ts: nowTs, max_amount: 100, amount: 100 };
+      carObj.consumed_resources.nitro = { ts: nowTs, max_amount: 20, amount: 20 };
+      carObj.consumed_resources.statistic_drive_time = carObj.consumed_resources.statistic_drive_time || { amount: 100 };
+      carObj.consumed_resources.statistic_total_distance = carObj.consumed_resources.statistic_total_distance || { amount: 500 };
+
+      // RAW ONLY: Do NOT assign to slot, house, or garage!
       profile.cars.items[newIdStr] = carObj;
       existingDescIds.add(descId);
-      assignCarToFreeSlot(profile, newIdStr);
     }
   }
 
-  profile.cars.seed = nextCarId;
+  profile.cars.seed = Math.max(1000, nextCarId);
 
-  if (profile.cars && profile.cars.items) {
-    const nowTs = Math.floor(Date.now() / 1000);
-    for (const cid in profile.cars.items) {
-      const car = profile.cars.items[cid];
-      if (car) {
-        car.is_bought = true;
-        car.consumed_resources = car.consumed_resources || {};
-        car.consumed_resources.gasoline = { ts: nowTs, max_amount: 100, amount: 100 };
-        car.consumed_resources.nitro = { ts: nowTs, max_amount: 20, amount: 20 };
-        car.consumed_resources.statistic_drive_time = car.consumed_resources.statistic_drive_time || { amount: 100 };
-        car.consumed_resources.statistic_total_distance = car.consumed_resources.statistic_total_distance || { amount: 500 };
-      }
-    }
-  }
-
-  ensureCarToRealEstateSlot(profile);
-  sanitizeCarToRealEstateSlot(profile);
-
+  // Synchronize car_models and amounts accurately
   if (profile.cars && profile.cars.items) {
     const activeModelsMap: Record<string, number> = {};
     for (const cid in profile.cars.items) {
@@ -3501,8 +3463,8 @@ app.post(["/api/auth/session", "/auth/session"], async (req, res) => {
 app.get(["/api/cars", "/cars"], (req, res) => {
   res.json({
     success: true,
-    total: ALL_CAR_MODELS.length,
-    cars: ALL_CAR_MODELS
+    total: ALL_CARS_LIST.length,
+    cars: ALL_CARS_LIST
   });
 });
 
@@ -4438,22 +4400,24 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         modified = unlockMapsUltimate(profile);
         successMsg = "✅ All 6 Maps, 53 Properties, Garages, Locations, and Race Generators unlocked successfully!";
       } else if (service_type === "add_cars_all") {
-        const { added } = implantCarsFromBot(profile, BOT_CARS_189);
-        successMsg = `✅ Successfully implanted all ${added} authentic cars from bot database into your garage!`;
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { get_all_cars: true }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Successfully injected ${addedCount} cars raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "add_cars_50") {
-        const first50Keys = Object.keys(BOT_CARS_189).slice(0, 50);
-        const subset: Record<string, any> = {};
-        for (const k of first50Keys) subset[k] = BOT_CARS_189[k];
-        const { added } = implantCarsFromBot(profile, subset);
-        successMsg = `✅ Successfully implanted ${added} cars into your garage!`;
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { random_cars_count: 50 }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Successfully injected ${addedCount} cars raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "add_cars_random") {
         const count = parseInt(random_cars_count || custom_amount || 10, 10) || 10;
-        const allKeys = Object.keys(BOT_CARS_189);
-        const shuffled = allKeys.sort(() => 0.5 - Math.random()).slice(0, count);
-        const subset: Record<string, any> = {};
-        for (const k of shuffled) subset[k] = BOT_CARS_189[k];
-        const { added } = implantCarsFromBot(profile, subset);
-        successMsg = `✅ Successfully implanted ${added} random cars into your garage!`;
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { random_cars_count: count }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Successfully injected ${addedCount} random cars raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "menu_sp") {
         await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
         modified = maxStreetPassPointsFromBot(profile, 1000000);
@@ -4473,14 +4437,11 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
       } else if (service_type === "get_all_cars") {
-        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
-          const { added } = implantCarsFromBot(profile, BOT_CARS_189);
-          modified = profile;
-          successMsg = `Successfully parked all ${added} cars in your garage! Turn on/off your game to sync.`;
-        } else {
-          modified = modifyProfile(profile, { get_all_cars: true, unlock_houses, unlock_clubs }, userId);
-          successMsg = "Successfully parked all 69 cars in your garage! Turn on/off your game to sync.";
-        }
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { get_all_cars: true, unlock_houses, unlock_clubs }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Successfully parked all ${finalCount} cars in your fleet! (${addedCount} added raw). Turn on/off your game to sync.`;
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_clubs) successMsg += " (All Clubs Unlocked)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
@@ -4528,37 +4489,29 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         if (!inject_car) {
           return res.status(400).json({ success: false, message: "Car model name (inject_car) is required." });
         }
-        modified = modifyProfile(profile, {
-          inject_car
-        }, userId);
-        successMsg = `✅ Car "${inject_car}" successfully injected into your garage!`;
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { inject_car }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        successMsg = `✅ Car "${inject_car}" successfully injected raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "inject_cars") {
         if (!inject_cars || !Array.isArray(inject_cars) || inject_cars.length === 0) {
           return res.status(400).json({ success: false, message: "A list of selected cars (inject_cars) is required." });
         }
-        modified = modifyProfile(profile, {
-          inject_cars
-        }, userId);
-        successMsg = `✅ Successfully injected ${inject_cars.length} selected cars into your garage!`;
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { inject_cars }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Successfully injected ${addedCount} selected cars raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "inject_random_cars") {
         const count = parseInt(random_cars_count, 10);
         if (isNaN(count) || count <= 0) {
           return res.status(400).json({ success: false, message: "A valid positive random_cars_count is required." });
         }
-        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
-          const allKeys = Object.keys(BOT_CARS_189);
-          const shuffled = allKeys.sort(() => 0.5 - Math.random()).slice(0, count);
-          const subset: Record<string, any> = {};
-          for (const k of shuffled) subset[k] = BOT_CARS_189[k];
-          const { added } = implantCarsFromBot(profile, subset);
-          modified = profile;
-          successMsg = `✅ Injected ${added} random cars from bot database into your garage successfully!`;
-        } else {
-          modified = modifyProfile(profile, {
-            random_cars_count: count
-          }, userId);
-          successMsg = `✅ Injected ${count} random cars into your garage successfully!`;
-        }
+        const initialCount = Object.keys(profile.cars?.items || {}).length;
+        modified = modifyProfile(profile, { random_cars_count: count }, userId);
+        const finalCount = Object.keys(modified.cars?.items || {}).length;
+        const addedCount = Math.max(0, finalCount - initialCount);
+        successMsg = `✅ Injected ${addedCount} random cars raw! Total cars in account: ${finalCount}.`;
       } else if (service_type === "battlepass" || service_type === "custom_ep" || service_type === "streetpass_ep") {
         await CarXClient.unlockStreetPassAuto(token, deviceId, uniqueId);
         modified = maxStreetPassPointsFromBot(profile, 1000000);
@@ -4610,9 +4563,12 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         modified = unlockMapsUltimate(profile);
         modified = injectCurrencyFromBot(modified, 50000000, 9999, 999999);
         modified = maxStreetPassPointsFromBot(modified, 1000000);
-        if (BOT_CARS_189 && Object.keys(BOT_CARS_189).length > 0) {
-          implantCarsFromBot(modified, BOT_CARS_189);
-        }
+        modified = modifyProfile(modified, {
+          unlock_clubs: true,
+          get_all_cars: true,
+          unlock_houses: true,
+          unlock_profile_style: true
+        }, userId);
       } else {
         modified = modifyProfile(profile, {
           cash: 50000000,
@@ -4630,9 +4586,10 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       if (upload.success) {
         deductCreditOnSuccess(); // fire-and-forget
         const remCredits = await getRemainingCredits();
+        const totalCarsInjected = Object.keys(modified?.cars?.items || {}).length || ALL_CARS_LIST.length;
         let msg = isEverything
-          ? "✅ Everything successfully injected!\n💵 Cash: 99M\n🪙 Gold: 99M\n📈 EXP: 93,060 (Level 50)\n🏆 All Clubs Unlocked\n🚗 All 69 Cars Injected"
-          : "✅ Default Boost successfully injected!\n💵 Cash: 99M\n🪙 Gold: 99M\n📈 EXP: 93,060 (Level 50)\n🏆 All Clubs Unlocked\n🚗 Starting Car R34 Active";
+          ? `✅ Everything successfully injected!\n💵 Cash: 50M\n🪙 Gold: 9,999\n📈 EXP: 999,999 (Level 50)\n🏆 All Clubs Unlocked\n🚗 All ${totalCarsInjected} Cars Injected`
+          : "✅ Default Boost successfully injected!\n💵 Cash: 50M\n🪙 Gold: 9,999\n📈 EXP: 999,999 (Level 50)\n🏆 All Clubs Unlocked\n🚗 Starting Car R34 Active";
 
         const spActivated = isEverything ? bpSuccess : (unlock_streetpass ? bpSuccess : false);
         if (spActivated) {

@@ -685,8 +685,17 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
   const injectCars = useInjectCars({
     mutation: {
-      onSuccess: (d) => {
+      onSuccess: (d: any) => {
         setResults(r => ({ ...r, cars: { ok: true, msg: d.message || "Done" } }));
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            cars: d.stats.cars || d.stats.cars_count || p.cars,
+            current_car: d.stats.current_car || p.current_car,
+            current_car_id: d.stats.current_car_id || p.current_car_id,
+            cars_list: d.stats.cars_list || p.cars_list,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err) => {
@@ -724,14 +733,30 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
   const injectAll = useInjectAll({
     mutation: {
-      onSuccess: (d) => {
-        const r = d as { currency?: boolean; maps?: boolean; cars?: number; streetPass?: boolean; message?: string };
+      onSuccess: (d: any) => {
+        const r = d as { currency?: boolean; maps?: boolean; cars?: number; streetPass?: boolean; message?: string; stats?: any };
         setResults({
           currency: { ok: !!r.currency, msg: "Currency injected" },
           maps: { ok: !!r.maps, msg: "Maps unlocked" },
           cars: { ok: r.cars !== undefined && r.cars > 0, msg: `${r.cars} cars added` },
           streetPass: { ok: !!r.streetPass, msg: r.streetPass ? "Street Pass activated" : "Skipped" },
         });
+        if (d.stats) {
+          const s = d.stats;
+          setProfile(p => p ? ({
+            ...p,
+            silver: s.cash !== undefined ? s.cash : p.silver,
+            gold: s.gold !== undefined ? s.gold : p.gold,
+            xp: s.exp !== undefined ? s.exp : p.xp,
+            level: s.level || p.level,
+            cars: s.cars || s.cars_count || p.cars,
+            clubs_count: s.clubs_count || p.clubs_count,
+            real_estates_count: s.real_estates_count || p.real_estates_count,
+            current_car: s.current_car || p.current_car,
+            current_car_id: s.current_car_id || p.current_car_id,
+            cars_list: s.cars_list || p.cars_list,
+          }) : null);
+        }
         toast({ title: "Inject All Complete!", description: r.message });
         fetchProfile();
       },
