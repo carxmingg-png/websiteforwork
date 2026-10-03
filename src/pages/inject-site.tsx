@@ -142,9 +142,9 @@ function BatchForm({ userToken }: { userToken: string }) {
   const { toast } = useToast();
   const [count, setCount] = useState("5");
   const [password, setPassword] = useState("CARXMING");
-  const [silver, setSilver] = useState("50000000");
-  const [gold, setGold] = useState("9999");
-  const [xp, setXp] = useState("93060");
+  const [silver, setSilver] = useState("1000");
+  const [gold, setGold] = useState("1000");
+  const [xp, setXp] = useState("100");
   const [carsMode, setCarsMode] = useState("all");
   const [carCount, setCarCount] = useState("50");
   const [includeMaps, setIncludeMaps] = useState(true);
@@ -178,9 +178,9 @@ function BatchForm({ userToken }: { userToken: string }) {
       const body = {
         count: n,
         password: password || "CARXMING",
-        cash: Number(silver) || 50000000,
-        gold: Number(gold) || 9999,
-        exp: Math.min(93060, Math.max(1, Number(xp) || 93060)),
+        cash: Number(silver) || 1000,
+        gold: Number(gold) || 1000,
+        exp: Number(xp) || 100,
         get_all_cars: carsMode === "all" || carsMode === "first50" || carsMode === "random10" || (carsMode === "custom" && Number(carCount) > 0),
         unlock_all: includeMaps,
         unlock_clubs: includeClubs,
@@ -252,9 +252,9 @@ function BatchForm({ userToken }: { userToken: string }) {
       <div>
         <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">💰 Currency</p>
         <div className="grid grid-cols-3 gap-2">
-          <BatchField label="Silver" value={silver} onChange={setSilver} placeholder="50000000" icon="🪙" type="number" />
-          <BatchField label="Gold" value={gold} onChange={setGold} placeholder="9999" icon="💎" type="number" />
-          <BatchField label="XP" value={xp} onChange={setXp} placeholder="93060" icon="⚡" type="number" />
+          <BatchField label="Silver" value={silver} onChange={setSilver} placeholder="1000" icon="🪙" type="number" />
+          <BatchField label="Gold" value={gold} onChange={setGold} placeholder="1000" icon="💎" type="number" />
+          <BatchField label="XP" value={xp} onChange={setXp} placeholder="100" icon="⚡" type="number" />
         </div>
       </div>
 
@@ -603,10 +603,10 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
   const [profile, setProfile] = useState<ProfileStats | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  const [currencyPreset, setCurrencyPreset] = useState<string>(CurrencyInputPreset.max);
-  const [customSilver, setCustomSilver] = useState("50000000");
-  const [customGold, setCustomGold] = useState("9999");
-  const [customXp, setCustomXp] = useState("999999");
+  const [currencyPreset, setCurrencyPreset] = useState<string>("step");
+  const [customSilver, setCustomSilver] = useState("1000");
+  const [customGold, setCustomGold] = useState("1000");
+  const [customXp, setCustomXp] = useState("100");
 
   const [carsMode, setCarsMode] = useState<string>(CarsInjectInputMode.all);
   const [customCarCount, setCustomCarCount] = useState("50");
@@ -807,19 +807,29 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.token]);
 
-  const handleInjectCurrency = () => {
-    let cashVal = 50000000;
-    let goldVal = 9999;
-    let expVal = 93060;
+  const handleInjectCurrency = (forced?: { service_type?: string; cash?: number; gold?: number; exp?: number }) => {
+    let service = "custom_resource";
+    let cashVal = 1000;
+    let goldVal = 1000;
+    let expVal = 100;
 
-    if (currencyPreset === CurrencyInputPreset.custom) {
+    if (forced) {
+      if (forced.service_type) service = forced.service_type;
+      cashVal = forced.cash !== undefined ? forced.cash : 0;
+      goldVal = forced.gold !== undefined ? forced.gold : 0;
+      expVal = forced.exp !== undefined ? forced.exp : 0;
+    } else if (currencyPreset === CurrencyInputPreset.custom) {
       cashVal = Number(customSilver) || 0;
       goldVal = Number(customGold) || 0;
       expVal = Number(customXp) || 0;
-    } else if (currencyPreset === CurrencyInputPreset.medium) {
-      cashVal = 10000000;
+    } else if (currencyPreset === "step" || currencyPreset === CurrencyInputPreset.safe || currencyPreset === CurrencyInputPreset.max) {
+      cashVal = 1000;
+      goldVal = 1000;
+      expVal = 100;
+    } else if (currencyPreset === CurrencyInputPreset.medium || currencyPreset === "medium") {
+      cashVal = 10000;
       goldVal = 5000;
-      expVal = 93060;
+      expVal = 500;
     }
 
     injectCurrency.mutate({
@@ -828,10 +838,11 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         userId: session.carxId,
         deviceId: session.deviceId,
         uniqueId: session.uniqueId,
-        service_type: "custom_resource",
+        service_type: service,
         cash: cashVal,
         gold: goldVal,
         exp: expVal,
+        custom_amount: service === "cash" ? cashVal : (service === "gold" ? goldVal : (service === "exp" ? expVal : undefined)),
         userToken
       },
     });
@@ -869,9 +880,9 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     injectCars.isPending || unlockStreetPass.isPending || unlockProfileStyle.isPending || injectAll.isPending || safeRepair.isPending;
 
   const CURRENCY_PRESETS = [
-    { v: CurrencyInputPreset.max, l: "Max", sub: "50M / 9999 / 999K" },
-    { v: CurrencyInputPreset.medium, l: "Medium", sub: "10M / 5K / 100K" },
-    { v: CurrencyInputPreset.custom, l: "Custom", sub: "Set your own" },
+    { v: "step", l: "Safe Step (+1K)", sub: "+1K Cash / +1K Gold / +100 EXP" },
+    { v: "medium", l: "Medium (+10K)", sub: "+10K Cash / +5K Gold / +500 EXP" },
+    { v: CurrencyInputPreset.custom, l: "Custom", sub: "Set custom increment" },
   ];
 
   const CAR_MODES = [
@@ -1102,19 +1113,59 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Currency */}
         <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-bold text-white">Currency</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white">Safe Currency & EXP</h3>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+              Anti-Ban Increments
+            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
+          <p className="text-xs text-zinc-400">
+            Injecting millions at once triggers bans. Add safe increments one step at a time like cars.
+          </p>
+
+          {/* Quick 1-Click Steppers: +1,000 Cash, +1,000 Gold, +100 EXP */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={anyPending}
+              onClick={() => handleInjectCurrency({ service_type: "cash", cash: 1000 })}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 font-bold transition-all disabled:opacity-40"
+            >
+              <span className="text-xs">💵 +1,000</span>
+              <span className="text-[9px] text-emerald-400/80 uppercase font-semibold">Cash</span>
+            </button>
+            <button
+              type="button"
+              disabled={anyPending}
+              onClick={() => handleInjectCurrency({ service_type: "gold", gold: 1000 })}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 font-bold transition-all disabled:opacity-40"
+            >
+              <span className="text-xs">🪙 +1,000</span>
+              <span className="text-[9px] text-amber-400/80 uppercase font-semibold">Gold</span>
+            </button>
+            <button
+              type="button"
+              disabled={anyPending}
+              onClick={() => handleInjectCurrency({ service_type: "exp", exp: 100 })}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 font-bold transition-all disabled:opacity-40"
+            >
+              <span className="text-xs">⚡ +100</span>
+              <span className="text-[9px] text-blue-400/80 uppercase font-semibold">EXP</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
             {CURRENCY_PRESETS.map(({ v, l, sub }) => (
               <button
                 key={v}
                 onClick={() => setCurrencyPreset(v)}
                 className={`flex flex-col items-center py-2 px-1 rounded-xl text-center transition-all border ${
                   currencyPreset === v
-                    ? "bg-amber-500 border-amber-400 text-black"
+                    ? "bg-amber-500 border-amber-400 text-black font-bold"
                     : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
                 }`}
               >
@@ -1132,22 +1183,22 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden space-y-2"
               >
-                <NumInput label="Silver" value={customSilver} onChange={setCustomSilver} min={0} max={999999999} placeholder="50000000" icon="🪙" accent="text-zinc-300" />
-                <NumInput label="Gold" value={customGold} onChange={setCustomGold} min={0} max={99999} placeholder="9999" icon="💰" accent="text-yellow-400" />
-                <NumInput label="XP" value={customXp} onChange={setCustomXp} min={0} max={99999999} placeholder="999999" icon="⚡" accent="text-blue-400" />
+                <NumInput label="Cash (Silver)" value={customSilver} onChange={setCustomSilver} min={0} max={1000000} placeholder="1000" icon="🪙" accent="text-zinc-300" />
+                <NumInput label="Gold" value={customGold} onChange={setCustomGold} min={0} max={100000} placeholder="1000" icon="💰" accent="text-yellow-400" />
+                <NumInput label="EXP" value={customXp} onChange={setCustomXp} min={0} max={100000} placeholder="100" icon="⚡" accent="text-blue-400" />
               </motion.div>
             )}
           </AnimatePresence>
 
           <button
             data-testid="button-inject-currency"
-            onClick={handleInjectCurrency}
+            onClick={() => handleInjectCurrency()}
             disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 font-bold text-xs transition-all disabled:opacity-40"
+            className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 font-bold text-xs transition-all disabled:opacity-40"
           >
             {injectCurrency.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Injecting...</span>
-            ) : "Inject Currency"}
+              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Adding Step Bundle...</span>
+            ) : "Add Step Bundle (+1K Cash, +1K Gold, +100 EXP)"}
           </button>
           {results.currency && (
             <div className={`flex items-center gap-1.5 text-xs ${results.currency.ok ? "text-green-400" : "text-red-400"}`}>

@@ -1086,14 +1086,22 @@ export function implantCarsFromBot(profile: any, carsToAdd: Record<string, any>)
   return { profile, added };
 }
 
-// ── Bot.py Inject Currency Function ─────────────────────────────────────────
-export function injectCurrencyFromBot(profile: any, silver = 50000000, gold = 9999, xp = 999999): any {
+// ── Bot.py Inject Currency Function (Safe Incremental Step) ───────────────────
+export function injectCurrencyFromBot(profile: any, silver = 1000, gold = 1000, xp = 100): any {
   if (!profile.resources) {
     profile.resources = {};
   }
-  profile.resources.soft = { amount: silver };
-  profile.resources.hard = { amount: gold };
-  profile.resources.experience = { award_index: calculateLevelFromExp(xp) || 50, amount: xp };
+  const currentSoft = Number(profile.resources.soft?.amount ?? 0) || 0;
+  const currentHard = Number(profile.resources.hard?.amount ?? 0) || 0;
+  const currentExp = Number(profile.resources.experience?.amount ?? 0) || 0;
+
+  const newSoft = Math.min(2140000000, currentSoft + silver);
+  const newHard = Math.min(2140000000, currentHard + gold);
+  const newExp = currentExp + xp;
+
+  profile.resources.soft = { amount: newSoft };
+  profile.resources.hard = { amount: newHard };
+  profile.resources.experience = { award_index: calculateLevelFromExp(newExp) || 1, amount: newExp };
   for (const key of ["battle_pass_points", "battle_pass_resource", "event_points", "ep", "bp"]) {
     profile.resources[key] = { amount: 999999 };
   }
@@ -2902,18 +2910,16 @@ export function modifyProfile(
       currentExp = Math.max(0, Number(res.experience.amount ?? 0) || 0);
     }
 
-    let targetLevel = currentLevel;
-    if (mods.level !== undefined) {
-      targetLevel = Math.min(50, Math.max(1, Math.floor(mods.level)));
-      if (!mods.overwrite_resources) {
-        targetLevel = Math.max(currentLevel, targetLevel);
-      }
-    }
-
     let targetExp = currentExp;
     if (mods.exp !== undefined) {
       const addExp = Math.floor(Number(mods.exp) || 0);
-      targetExp = mods.overwrite_resources ? addExp : Math.max(currentExp, addExp);
+      targetExp = mods.overwrite_resources ? addExp : (currentExp + addExp);
+    }
+
+    let targetLevel = calculateLevelFromExp(targetExp);
+    if (mods.level !== undefined) {
+      const reqLevel = Math.min(50, Math.max(1, Math.floor(mods.level)));
+      targetLevel = mods.overwrite_resources ? reqLevel : Math.max(targetLevel, reqLevel);
     }
 
     res.experience = { award_index: targetLevel, amount: targetExp };
@@ -4164,6 +4170,8 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     inject_med: "cash_gold",
     currency_max: "cash_gold",
     currency_med: "cash_gold",
+    inject_step: "cash_gold",
+    currency_step: "cash_gold",
     menu_maps: "unlock_clubs",
     menu_restore: "safe_repair",
     restore: "safe_repair"
@@ -4198,6 +4206,8 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     inject_med: 2,
     currency_max: 3,
     currency_med: 2,
+    inject_step: 1,
+    currency_step: 1,
     menu_maps: 3,
     menu_restore: 2,
     restore: 2
@@ -4364,38 +4374,38 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       let successMsg = "";
 
       if (service_type === "cash") {
-        const amount = custom_amount ? parseInt(custom_amount, 10) : 99000000;
+        const amount = custom_amount ? parseInt(custom_amount, 10) : 1000;
         modified = modifyProfile(profile, { cash: amount, unlock_houses, unlock_clubs, get_all_cars }, userId);
-        successMsg = `Successfully injected ${amount.toLocaleString()} Cash!`;
+        successMsg = `✅ Successfully added +${amount.toLocaleString()} Cash safely!`;
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_clubs) successMsg += " (All Clubs Unlocked)";
         if (get_all_cars) successMsg += " (All Cars Injected)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
       } else if (service_type === "gold") {
-        const amount = custom_amount ? parseInt(custom_amount, 10) : 99000000;
+        const amount = custom_amount ? parseInt(custom_amount, 10) : 1000;
         modified = modifyProfile(profile, { gold: amount, unlock_houses, unlock_clubs, get_all_cars }, userId);
-        successMsg = `Successfully injected ${amount.toLocaleString()} Gold!`;
+        successMsg = `✅ Successfully added +${amount.toLocaleString()} Gold safely!`;
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_clubs) successMsg += " (All Clubs Unlocked)";
         if (get_all_cars) successMsg += " (All Cars Injected)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
       } else if (service_type === "exp" || service_type === "level") {
-        const amount = custom_amount ? parseInt(custom_amount, 10) : 93060;
-        modified = modifyProfile(profile, { level: 50, exp: amount, unlock_houses, unlock_clubs, get_all_cars }, userId);
-        successMsg = `Successfully boosted EXP to ${amount.toLocaleString()} (Level 50)!`;
+        const amount = custom_amount ? parseInt(custom_amount, 10) : 100;
+        modified = modifyProfile(profile, { exp: amount, unlock_houses, unlock_clubs, get_all_cars }, userId);
+        successMsg = `✅ Successfully added +${amount.toLocaleString()} EXP safely!`;
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_clubs) successMsg += " (All Clubs Unlocked)";
         if (get_all_cars) successMsg += " (All Cars Injected)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
-      } else if (service_type === "inject_max" || service_type === "currency_max") {
-        modified = injectCurrencyFromBot(profile, 50000000, 9999, 999999);
-        successMsg = "✅ Maximum Currency & Premium Boost injected successfully (50M Cash, 9,999 Gold, 999,999 EXP, StreetPass & Premium)!";
+      } else if (service_type === "inject_max" || service_type === "currency_max" || service_type === "inject_step" || service_type === "currency_step") {
+        modified = modifyProfile(profile, { cash: 1000, gold: 1000, exp: 100 }, userId);
+        successMsg = "✅ Safe Step Currency added (+1,000 Cash, +1,000 Gold, +100 EXP safely)!";
       } else if (service_type === "inject_med" || service_type === "currency_med") {
-        modified = injectCurrencyFromBot(profile, 10000000, 5000, 100000);
-        successMsg = "✅ Medium Currency Boost injected successfully (10M Cash, 5,000 Gold, 100,000 EXP)!";
+        modified = modifyProfile(profile, { cash: 1000, gold: 1000, exp: 100 }, userId);
+        successMsg = "✅ Safe Step Currency added (+1,000 Cash, +1,000 Gold, +100 EXP safely)!";
       } else if (service_type === "menu_maps") {
         modified = unlockMapsUltimate(profile);
         successMsg = "✅ All 6 Maps, 53 Properties, Garages, Locations, and Race Generators unlocked successfully!";
@@ -4451,16 +4461,18 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
           return res.status(400).json({ success: false, message: "Invalid custom resource payload." });
         }
         const { cash: cashParsed, gold: goldParsed, exp: expParsed } = customResourceParsed;
+        const addCash = cashParsed.value !== null && cashParsed.value !== undefined ? cashParsed.value : 0;
+        const addGold = goldParsed.value !== null && goldParsed.value !== undefined ? goldParsed.value : 0;
+        const addExp = expParsed.value !== null && expParsed.value !== undefined ? expParsed.value : 0;
         modified = modifyProfile(profile, {
-          cash: cashParsed.value ?? undefined,
-          gold: goldParsed.value ?? undefined,
-          level: expParsed.value !== null ? calculateLevelFromExp(expParsed.value) : undefined,
-          exp: expParsed.value ?? undefined,
+          cash: addCash,
+          gold: addGold,
+          exp: addExp,
           unlock_houses,
           unlock_clubs,
           get_all_cars
         }, userId);
-        successMsg = "✅ Custom resources injected successfully!";
+        successMsg = `✅ Safely added +${addCash.toLocaleString()} Cash, +${addGold.toLocaleString()} Gold, +${addExp.toLocaleString()} EXP!`;
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
         if (unlock_streetpass) successMsg += " (StreetPass Activated)";
         if (inject_ep) successMsg += " (EP Point loops sent)";
@@ -4561,9 +4573,12 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       let modified: any;
       if (isEverything) {
         modified = unlockMapsUltimate(profile);
-        modified = injectCurrencyFromBot(modified, 50000000, 9999, 999999);
+        modified = injectCurrencyFromBot(modified, 1000, 1000, 100);
         modified = maxStreetPassPointsFromBot(modified, 1000000);
         modified = modifyProfile(modified, {
+          cash: 1000,
+          gold: 1000,
+          exp: 100,
           unlock_clubs: true,
           get_all_cars: true,
           unlock_houses: true,
@@ -4571,10 +4586,9 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         }, userId);
       } else {
         modified = modifyProfile(profile, {
-          cash: 50000000,
-          gold: 9999,
-          level: 50,
-          exp: 999999,
+          cash: 1000,
+          gold: 1000,
+          exp: 100,
           unlock_clubs: true,
           get_all_cars: true,
           unlock_houses: true,
