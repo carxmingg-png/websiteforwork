@@ -92,6 +92,14 @@ export function useRegisterCarX(options?: any) {
   });
 }
 
+export function useDeleteCarX(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: any }) =>
+      fetchApi("/api/carx/delete", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
 export function useGetProfile(options?: any) {
   return useMutation({
     mutationFn: (vars: { data: any }) =>

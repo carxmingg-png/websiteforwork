@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   useLoginCarX,
   useRegisterCarX,
+  useDeleteCarX,
   useGetProfile,
   useInjectCurrency,
   useUnlockMaps,
@@ -21,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   LogOut, DollarSign, Map, Car, Star, Zap, Trophy,
   User, UserPlus, Eye, EyeOff, RefreshCw, CheckCircle2, AlertCircle, Users,
+  Trash2, ShieldAlert, ShieldCheck
 } from "lucide-react";
 import AccJsonExtractor from "@/components/AccJsonExtractor";
 
@@ -45,6 +47,8 @@ interface ProfileStats {
   streetPass: boolean;
   premium: boolean;
   isVerified: boolean;
+  isBanned?: boolean;
+  banReason?: string;
   name?: string;
   cars_list?: Array<{ id: string; descId: string; mileage?: number; rating?: number }>;
 }
@@ -342,7 +346,7 @@ function BatchForm({ userToken }: { userToken: string }) {
 }
 
 function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s: CarXSession) => void }) {
-  const [mode, setMode] = useState<"login" | "register" | "bulk">("login");
+  const [mode, setMode] = useState<"login" | "register" | "delete" | "bulk">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -351,16 +355,25 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
 
   const login = useLoginCarX({
     mutation: {
-      onSuccess: (d) => onSuccess({
-        token: d.token || "",
-        carxId: d.userId || d.user_id || "",
-        email: d.email || email,
-        deviceId: d.deviceId || "",
-        uniqueId: d.uniqueId || "",
-        profileStats: d.profileStats
-      }),
+      onSuccess: (d) => {
+        if (d.isBanned || d.profileStats?.isBanned) {
+          toast({
+            title: "🚨 Ban Detected on Account!",
+            description: d.banReason || d.profileStats?.banReason || "CarX anti-cheat flagged this account as banned or restricted.",
+            variant: "destructive"
+          });
+        }
+        onSuccess({
+          token: d.token || "",
+          carxId: d.userId || d.user_id || "",
+          email: d.email || email,
+          deviceId: d.deviceId || "",
+          uniqueId: d.uniqueId || "",
+          profileStats: d.profileStats
+        });
+      },
       onError: (err) => {
-        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        const msg = (err as { response?: { data?: { error?: string; message?: string } } })?.response?.data?.message || (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
         toast({ title: "Login Failed", description: msg || "Invalid credentials", variant: "destructive" });
       },
     },
@@ -373,7 +386,15 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
           toast({ title: "Registration Unverified", description: d.message || "Auto-verification failed.", variant: "destructive" });
           return;
         }
-        toast({ title: "Account Created!", description: "Blueprint applied to your new account" });
+        if (d.isBanned || d.profileStats?.isBanned) {
+          toast({
+            title: "🚨 Ban Detected on Account!",
+            description: d.banReason || d.profileStats?.banReason || "CarX anti-cheat flagged this account as banned.",
+            variant: "destructive"
+          });
+        } else {
+          toast({ title: "Account Created!", description: "Blueprint applied to your new account" });
+        }
         onSuccess({
           token: d.token || "",
           carxId: d.userId || d.user_id || "",
@@ -390,9 +411,48 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
     },
   });
 
+  const deleteAcc = useDeleteCarX({
+    mutation: {
+      onSuccess: (d) => {
+        if (d.success) {
+          toast({ title: "Account Deleted! 🗑️", description: d.message || "CarX account has been completely purged from server." });
+          setPassword("");
+        } else {
+          toast({ title: "Delete Failed", description: d.message || "Could not delete account. Check credentials.", variant: "destructive" });
+        }
+      },
+      onError: (err) => {
+        const msg = (err as { response?: { data?: { error?: string; message?: string } } })?.response?.data?.message || (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        toast({ title: "Delete Failed", description: msg || "Failed to delete account", variant: "destructive" });
+      }
+    }
+  });
+
+  const handleDelete = () => {
+    if (!email || !password) {
+      toast({ title: "Missing Information", description: "Please enter account email and password to delete.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`⚠️ Are you sure you want to permanently delete CarX account: ${email}?\nThis uses the bot's fast anonymous & token purge sequence. This cannot be undone!`)) {
+      return;
+    }
+    deleteAcc.mutate({
+      data: {
+        email,
+        password,
+        userToken
+      }
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
+    if (mode === "delete") {
+      handleDelete();
+      return;
+    }
 
     // Retrieve or generate persistent unique device identifiers
     let storedDeviceIds: { deviceId: string; uniqueId: string } | null = null;
@@ -428,18 +488,18 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
 
     if (mode === "login") {
       login.mutate({ data: payload });
-    } else {
+    } else if (mode === "register") {
       register.mutate({ data: payload });
     }
   };
 
-  const isPending = login.isPending || register.isPending;
+  const isPending = login.isPending || register.isPending || deleteAcc.isPending;
 
   if (mode === "bulk") {
     return (
       <div>
         <div className="flex gap-1 p-1 bg-zinc-800/60 rounded-xl mb-4">
-          {(["login", "register", "bulk"] as const).map((m) => (
+          {(["login", "register", "delete", "bulk"] as const).map((m) => (
             <button
               key={m}
               onClick={() => {
@@ -455,12 +515,14 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
                   });
                 }
               }}
-              className={`flex items-center gap-2 flex-1 justify-center py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                mode === m ? "bg-emerald-500 text-black" : "text-zinc-500 hover:text-zinc-300"
+              className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                mode === m
+                  ? (m === "delete" ? "bg-red-600 text-white" : "bg-emerald-500 text-black")
+                  : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              {m === "login" ? <User className="w-3.5 h-3.5" /> : m === "register" ? <UserPlus className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-              {m === "login" ? "Login" : m === "register" ? "Register" : "Bulk"}
+              {m === "login" ? <User className="w-3.5 h-3.5" /> : m === "register" ? <UserPlus className="w-3.5 h-3.5" /> : m === "delete" ? <Trash2 className="w-3.5 h-3.5 text-red-400" /> : <Users className="w-3.5 h-3.5" />}
+              {m === "login" ? "Login" : m === "register" ? "Register" : m === "delete" ? "Delete" : "Bulk"}
             </button>
           ))}
         </div>
@@ -472,7 +534,7 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
   return (
     <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-6">
       <div className="flex gap-1 p-1 bg-zinc-800/60 rounded-xl mb-6">
-        {(["login", "register", "bulk"] as const).map((m) => (
+        {(["login", "register", "delete", "bulk"] as const).map((m) => (
           <button
             key={m}
             onClick={() => {
@@ -488,12 +550,14 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
                 });
               }
             }}
-            className={`flex items-center gap-2 flex-1 justify-center py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-              mode === m ? "bg-amber-500 text-black" : "text-zinc-500 hover:text-zinc-300"
+            className={`flex items-center gap-1.5 flex-1 justify-center py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+              mode === m
+                ? (m === "delete" ? "bg-red-600 text-white" : "bg-amber-500 text-black")
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            {m === "login" ? <User className="w-3.5 h-3.5" /> : m === "register" ? <UserPlus className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-            {m === "login" ? "Login" : m === "register" ? "Register" : "Bulk"}
+            {m === "login" ? <User className="w-3.5 h-3.5" /> : m === "register" ? <UserPlus className="w-3.5 h-3.5" /> : m === "delete" ? <Trash2 className="w-3.5 h-3.5 text-red-400" /> : <Users className="w-3.5 h-3.5" />}
+            {m === "login" ? "Login" : m === "register" ? "Register" : m === "delete" ? "Delete" : "Bulk"}
           </button>
         ))}
       </div>
@@ -505,6 +569,16 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
           className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-xs text-cyan-300"
         >
           ℹ️ New account will have the blueprint profile applied automatically.
+        </motion.div>
+      )}
+
+      {mode === "delete" && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300"
+        >
+          ⚠️ Fast Account Deletion: Uses bot.py's anonymous protocol & token fallback to immediately unbind and purge your CarX account.
         </motion.div>
       )}
 
@@ -529,7 +603,6 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
                     const checked = e.target.checked;
                     setSingleVerify(checked);
                     if (checked) {
-                      // Swap to @web-library.net
                       setEmail((prev) => {
                         if (!prev) return "";
                         const atIdx = prev.indexOf("@");
@@ -537,7 +610,6 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
                         return localPart + "@web-library.net";
                       });
                     } else {
-                      // Swap to @gmail.com
                       setEmail((prev) => {
                         if (!prev) return "";
                         const atIdx = prev.indexOf("@");
@@ -580,19 +652,56 @@ function LoginForm({ userToken, onSuccess }: { userToken: string; onSuccess: (s:
             </button>
           </div>
         </div>
-        <button
-          data-testid="button-carx-submit"
-          type="submit"
-          disabled={isPending || !email || !password}
-          className="w-full py-3 rounded-xl font-bold text-sm tracking-widest uppercase bg-gradient-to-r from-amber-500 to-amber-400 text-black hover:from-amber-400 hover:to-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-        >
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              {mode === "login" ? "Logging in..." : "Creating account..."}
-            </span>
-          ) : (mode === "login" ? "Login to CarX" : "Create Account")}
-        </button>
+
+        {mode === "delete" ? (
+          <button
+            data-testid="button-carx-delete"
+            type="submit"
+            disabled={isPending || !email || !password}
+            className="w-full py-3 rounded-xl font-bold text-sm tracking-widest uppercase bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-500 hover:to-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(220,38,38,0.3)] flex items-center justify-center gap-2"
+          >
+            {deleteAcc.isPending ? (
+              <span className="flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Deleting Account...
+              </span>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4" />
+                Permanently Delete Account
+              </>
+            )}
+          </button>
+        ) : (
+          <>
+            <button
+              data-testid="button-carx-submit"
+              type="submit"
+              disabled={isPending || !email || !password}
+              className="w-full py-3 rounded-xl font-bold text-sm tracking-widest uppercase bg-gradient-to-r from-amber-500 to-amber-400 text-black hover:from-amber-400 hover:to-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+            >
+              {isPending ? (
+                <span className="flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  {mode === "login" ? "Logging in..." : "Creating account..."}
+                </span>
+              ) : (mode === "login" ? "Login to CarX" : "Create Account")}
+            </button>
+
+            {/* Quick Fast Delete right inside Login and Register */}
+            <div className="pt-1">
+              <button
+                type="button"
+                disabled={isPending || !email || !password}
+                onClick={handleDelete}
+                className="w-full py-2 rounded-xl text-xs font-semibold text-red-400/80 hover:text-red-300 hover:bg-red-950/30 border border-red-500/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleteAcc.isPending ? "Purging Account..." : "Fast Delete Account (With Credentials Above)"}
+              </button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );
@@ -617,10 +726,43 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
   const [fleetModalOpen, setFleetModalOpen] = useState(false);
   const [fleetSearch, setFleetSearch] = useState("");
 
+  const deleteAcc = useDeleteCarX({
+    mutation: {
+      onSuccess: (d) => {
+        if (d.success) {
+          toast({ title: "Account Deleted! 🗑️", description: d.message || "CarX account has been purged successfully." });
+          onDisconnect();
+        } else {
+          toast({ title: "Delete Failed", description: d.message || "Failed to delete account.", variant: "destructive" });
+        }
+      },
+      onError: (err) => {
+        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast({ title: "Delete Failed", description: msg || "Request failed", variant: "destructive" });
+      }
+    }
+  });
+
+  const handleDeleteCurrentAccount = () => {
+    if (!window.confirm(`⚠️ DANGER: Are you sure you want to permanently delete this CarX account (${session.email})?\nAll progress, cars, and data will be erased forever on CarX servers!`)) {
+      return;
+    }
+    deleteAcc.mutate({
+      data: {
+        email: session.email,
+        token: session.token,
+        deviceId: session.deviceId,
+        userToken
+      }
+    });
+  };
+
   const getProfile = useGetProfile({
     mutation: {
       onSuccess: (d) => {
         if (d.success && d.stats) {
+          const isBannedAcc = Boolean(d.stats.isBanned ?? d.isBanned);
+          const banReasonText = d.stats.banReason || d.banReason;
           setProfile({
             silver: d.stats.cash !== undefined ? d.stats.cash : 0,
             gold: d.stats.gold !== undefined ? d.stats.gold : 0,
@@ -634,9 +776,18 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             streetPass: !!d.stats.street_pass,
             premium: true,
             isVerified: !!d.stats.isVerified,
+            isBanned: isBannedAcc,
+            banReason: banReasonText,
             name: d.stats.name,
             cars_list: d.stats.cars_list || [],
           });
+          if (isBannedAcc) {
+            toast({
+              title: "🚨 Ban Detected!",
+              description: banReasonText || "CarX anti-cheat has flagged or restricted this account.",
+              variant: "destructive"
+            });
+          }
         }
         setLoadingProfile(false);
       },
@@ -1030,6 +1181,14 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
               {loadingProfile ? "Syncing..." : "Sync Stats"}
             </button>
             <button
+              onClick={handleDeleteCurrentAccount}
+              disabled={deleteAcc.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/30 hover:bg-red-600 border border-red-500/60 text-red-200 font-mono text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-red-300" />
+              {deleteAcc.isPending ? "Deleting..." : "Delete Account"}
+            </button>
+            <button
               onClick={onDisconnect}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/20 hover:bg-red-950/40 border border-red-500/30 hover:border-red-400 text-red-400 font-mono text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
             >
@@ -1038,6 +1197,40 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             </button>
           </div>
         </div>
+
+        {/* Anti-Cheat Ban Alert Banner */}
+        {profile?.isBanned && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 rounded-2xl bg-gradient-to-r from-red-950/80 via-red-900/60 to-rose-950/80 border-2 border-red-500/80 shadow-[0_0_25px_rgba(239,68,68,0.3)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-red-200"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600/30 border border-red-500/50 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-6 h-6 text-red-400 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white animate-pulse">
+                    BANNED / RESTRICTED
+                  </span>
+                  <span className="text-xs text-red-300 font-bold">CarX Anti-Cheat Detection</span>
+                </div>
+                <p className="text-xs text-red-300/80 mt-1">
+                  {profile.banReason || "This account has been flagged or blocked by CarX active security policies."}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleDeleteCurrentAccount}
+              disabled={deleteAcc.isPending}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {deleteAcc.isPending ? "Purging..." : "Fast Delete Account"}
+            </button>
+          </motion.div>
+        )}
 
         {/* Live Profile Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

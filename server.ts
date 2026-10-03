@@ -1336,6 +1336,19 @@ export function extractProfileStats(profile: any, debug = false) {
     finalCash = 21000;
   }
 
+  const isBanned = Boolean(
+    profile.is_banned ||
+    profile.banned ||
+    profile.ban ||
+    profile.is_blocked ||
+    profile.profile?.is_banned ||
+    profile.profile?.banned ||
+    profile.profile?.ban ||
+    profile.account_status === "banned" ||
+    profile.status === "banned"
+  );
+  const banReason = profile.ban_reason || profile.profile?.ban_reason || profile.reason || (isBanned ? "Account flagged by server anti-cheat" : undefined);
+
   return {
     cash: finalCash,
     gold,
@@ -1345,6 +1358,8 @@ export function extractProfileStats(profile: any, debug = false) {
     avatar,
     lastUpdated,
     isVerified,
+    isBanned,
+    banReason,
     cars: carsCount,
     cars_count: carsCount,
     clubs_count: clubsCount,
@@ -1783,13 +1798,75 @@ class CarXClient {
     return null;
   }
 
+  static async checkBanStatus(token: string, userId?: string, deviceId?: string, uniqueId?: string): Promise<{ isBanned: boolean; banReason?: string; statusText?: string }> {
+    try {
+      // 1. Check auth state from CarX ID
+      const authState = await CarXClient.getAuthState(token);
+      if (authState) {
+        const stateObj = authState.d || authState;
+        const bannedVal = stateObj.is_banned ?? stateObj.banned ?? stateObj.ban ?? false;
+        const statusVal = String(stateObj.status || "").toLowerCase();
+        const isBanned = Boolean(bannedVal || statusVal === "banned" || statusVal === "blocked" || stateObj.is_blocked || stateObj.blocked);
+        if (isBanned) {
+          const reason = stateObj.ban_reason || stateObj.reason || stateObj.message || "Account is suspended on CarX ID";
+          return {
+            isBanned: true,
+            banReason: reason,
+            statusText: "BANNED"
+          };
+        }
+      }
+
+      // 2. Probe game profiles endpoint with Authorization
+      const headers: Record<string, string> = {
+        ...DEFAULT_HEADERS,
+        "Authorization": fToken(token)
+      };
+      if (deviceId) { headers["Device-Id"] = deviceId; headers["X-Device-Id"] = deviceId; }
+      if (uniqueId) { headers["Unique-Id"] = uniqueId; headers["X-Unique-Id"] = uniqueId; }
+
+      const profileRes = await fetch(`${GAME_BASE_URL}/profiles`, {
+        method: "GET",
+        headers
+      }).catch(() => null);
+
+      if (profileRes) {
+        if (profileRes.status === 403 || profileRes.status === 401) {
+          const body = await profileRes.text().catch(() => "");
+          if (/ban|block|suspend|forbidden|restrict/i.test(body)) {
+            return {
+              isBanned: true,
+              banReason: body.length < 150 && body.trim() ? body.trim() : "Account Banned by Anti-Cheat (403 Forbidden)",
+              statusText: "BANNED"
+            };
+          }
+        }
+        if (profileRes.status === 200) {
+          const json = await profileRes.json().catch(() => null);
+          const d = json?.d?.data || json?.d || json?.data || json;
+          if (d && (d.is_banned || d.banned || d.ban || d.account_status === "banned")) {
+            return {
+              isBanned: true,
+              banReason: d.ban_reason || "Account flagged in CarX profile",
+              statusText: "BANNED"
+            };
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn("[CHECK BAN ERROR]", e.message || e);
+    }
+    return { isBanned: false, statusText: "ACTIVE" };
+  }
+
   static async fetchAndAttachProfileStats(result: any) {
     if (result.success && result.token) {
       try {
-        console.log(`[FETCH STATS] Fetching profile & state for userId=${result.userId}`);
-        const [profileResult, authState] = await Promise.all([
+        console.log(`[FETCH STATS] Fetching profile, state & ban check for userId=${result.userId}`);
+        const [profileResult, authState, banStatus] = await Promise.all([
           CarXClient.getProfile(result.token, result.userId, result.deviceId, result.uniqueId),
-          CarXClient.getAuthState(result.token)
+          CarXClient.getAuthState(result.token),
+          CarXClient.checkBanStatus(result.token, result.userId, result.deviceId, result.uniqueId)
         ]);
         const { profile } = profileResult;
         let stats: any;
@@ -1812,7 +1889,13 @@ class CarXClient {
         if (authState) {
           stats.isVerified = !!authState.verified;
         }
+
+        stats.isBanned = banStatus.isBanned || !!stats.isBanned;
+        if (banStatus.banReason) stats.banReason = banStatus.banReason;
+
         result.profileStats = stats;
+        result.isBanned = stats.isBanned;
+        result.banReason = stats.banReason;
         result.rawProfile = profile || null;
       } catch (e: any) {
         console.error("[PROFILE FETCH ERROR]", e.message || e);
@@ -1949,53 +2032,59 @@ class CarXClient {
 
   static async deleteAnonymous(email: string, pass: string, deviceId?: string) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-      const devId = deviceId || crypto.randomBytes(16).toString("hex");
+      const devId = deviceId || crypto.randomBytes(8).toString("hex");
+      CarXClient.registerDevice(devId);
+
+      const headers = {
+        ...DEFAULT_HEADERS,
+        "Content-Type": "application/x-www-form-urlencoded"
+      };
+      const body = new URLSearchParams({
+        username: email,
+        password: pass,
+        project: "4"
+      });
+
       const response = await fetch(`${BASE_URL}/delete/anonymous`, {
         method: "POST",
-        headers: {
-          ...DEFAULT_HEADERS,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password: pass, device_id: devId }),
+        headers,
+        body,
         signal: controller.signal
       });
       clearTimeout(timeoutId);
+
       if (response.status === 200 || response.status === 201) {
-        return { success: true, message: "Account deleted anonymously." };
+        return { success: true, method: "anonymous", message: "Account deleted successfully via CarX Anonymous API." };
       }
-      return { success: false, message: await response.text() };
+      const errText = await response.text().catch(() => "");
+      let errMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        errMsg = j.message || j.e?.message || errText;
+      } catch {}
+      return { success: false, message: errMsg || `HTTP ${response.status}` };
     } catch (e: any) {
       clearTimeout(timeoutId);
       return { success: false, message: e.message || "Failed to connect for anonymous deletion" };
     }
   }
 
-  static async deleteAccount(token: string, email: string, pass: string) {
+  static async deleteWithToken(token: string, email: string, pass: string) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-      // Re-authenticate first to ensure we have a fresh, valid token
-      console.log(`[DELETE ACCOUNT] Re-authenticating ${email} to ensure valid session...`);
-      const authRes = await CarXClient.authenticate("login", email, pass);
-      let activeToken = token;
-      if (authRes.success && authRes.token) {
-        activeToken = authRes.token;
-        console.log(`[DELETE ACCOUNT] Fresh token obtained successfully.`);
-      } else {
-        console.log(`[DELETE ACCOUNT] Re-authentication failed: ${authRes.message}. Trying with provided token.`);
-      }
-
       const headers = {
         ...DEFAULT_HEADERS,
-        "Authorization": `Bearer ${activeToken}`,
+        "Authorization": fToken(token),
         "Content-Type": "application/x-www-form-urlencoded"
       };
       const body = new URLSearchParams({
         username: email,
         password: pass
       });
+
       const response = await fetch(`${BASE_URL}/delete`, {
         method: "POST",
         headers,
@@ -2003,45 +2092,61 @@ class CarXClient {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
+
       if (response.status === 200 || response.status === 201) {
-        return { success: true, message: "Account deleted successfully." };
+        return { success: true, method: "token", message: "Account deleted successfully via CarX Token API." };
       }
-      return { success: false, message: await response.text() };
+      const errText = await response.text().catch(() => "");
+      let errMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        errMsg = j.message || j.e?.message || errText;
+      } catch {}
+      return { success: false, message: errMsg || `HTTP ${response.status}` };
     } catch (e: any) {
       clearTimeout(timeoutId);
-      return { success: false, message: e.message || "Failed to connect for deletion" };
+      return { success: false, message: e.message || "Failed to connect for token deletion" };
     }
   }
 
+  static async deleteAccount(token: string, email: string, pass: string) {
+    return CarXClient.deleteWithToken(token, email, pass);
+  }
+
   static async deleteAccountAuto(email: string, pass: string, token?: string, deviceId?: string) {
-    // 1. Try anonymous delete (matching bot.py)
+    // 1. Fast anonymous delete (exact matching from bot.py)
     const anonRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
     if (anonRes.success) {
-      return { success: true, method: "anonymous", message: "Account deleted successfully via anonymous API." };
+      return anonRes;
     }
 
-    // 2. Try with token
-    let activeToken = token;
-    if (!activeToken) {
-      const auth = await CarXClient.authenticate("login", email, pass, deviceId);
-      if (auth.success && auth.token) {
-        activeToken = auth.token;
-      }
-    }
-    if (activeToken) {
-      const tokenRes = await CarXClient.deleteAccount(activeToken, email, pass);
+    // 2. Try with active token if provided
+    if (token) {
+      const tokenRes = await CarXClient.deleteWithToken(token, email, pass);
       if (tokenRes.success) {
-        return { success: true, method: "token", message: "Account deleted successfully via token API." };
+        return tokenRes;
       }
     }
 
-    // 3. Retry anonymous
+    // 3. Log in to get fresh token and delete
+    const auth = await CarXClient.authenticate("login", email, pass, deviceId);
+    if (auth.success && auth.token) {
+      const tokenRes = await CarXClient.deleteWithToken(auth.token, email, pass);
+      if (tokenRes.success) {
+        return tokenRes;
+      }
+    }
+
+    // 4. Retry anonymous
     const retryRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
     if (retryRes.success) {
       return { success: true, method: "anonymous-retry", message: "Account deleted successfully on retry." };
     }
 
-    return { success: false, message: "Failed to delete account across all methods." };
+    return {
+      success: false,
+      message: anonRes.message || "Failed to delete account across all methods. Check your credentials."
+    };
   }
 
   static async unlockStreetPassAuto(token: string, deviceId?: string, uniqueId?: string): Promise<boolean> {
@@ -3873,9 +3978,10 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
   }
 
   try {
-    const [profileResult, authState] = await Promise.all([
+    const [profileResult, authState, banStatus] = await Promise.all([
       CarXClient.getProfile(token, userId, deviceId, uniqueId),
-      CarXClient.getAuthState(token)
+      CarXClient.getAuthState(token),
+      CarXClient.checkBanStatus(token, userId, deviceId, uniqueId)
     ]);
     const { profile, response } = profileResult;
 
@@ -3908,9 +4014,16 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
       stats.isVerified = !!authState.verified;
     }
 
+    stats.isBanned = banStatus.isBanned || !!stats.isBanned;
+    if (banStatus.banReason) {
+      stats.banReason = banStatus.banReason;
+    }
+
     return res.json({
       success: true,
       stats,
+      isBanned: stats.isBanned,
+      banReason: stats.banReason,
       rawProfile: profile || null
     });
   } catch (e: any) {
@@ -3921,7 +4034,7 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
 
 
 // CarX Account Delete (Robust Anonymous + Token Auto Sequence from bot.py)
-app.post(["/api/carx/delete", "/carx/delete"], authMiddleware, async (req, res) => {
+app.post(["/api/carx/delete", "/carx/delete", "/api/carx/delete-account", "/carx/delete-account"], authMiddleware, async (req, res) => {
   const { token, email, password, deviceId } = req.body;
   if (!email || !password) {
     return res.status(400).json({ success: false, message: "Email and password are required." });
