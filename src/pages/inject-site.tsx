@@ -7,6 +7,7 @@ import {
   useGetProfile,
   useInjectCurrency,
   useUnlockMaps,
+  useUnlockMapsHouses,
   useUnlockClubs,
   useInjectCars,
   useUnlockStreetPass,
@@ -846,6 +847,30 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     },
   });
 
+  const unlockMapsHouses = useUnlockMapsHouses({
+    mutation: {
+      onSuccess: (d: any) => {
+        setResults(r => ({ ...r, mapsHouses: { ok: true, msg: d.message || "Maps & Real Estate Unlocked!" } }));
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            maps_count: d.stats.maps_count !== undefined ? d.stats.maps_count : p.maps_count,
+            unlocked_maps: d.stats.unlocked_maps || p.unlocked_maps,
+            clubs_count: d.stats.clubs_count !== undefined ? d.stats.clubs_count : p.clubs_count,
+            real_estates_count: d.stats.real_estates_count !== undefined ? d.stats.real_estates_count : p.real_estates_count,
+          }) : null);
+        }
+        toast({ title: "Unlocked!", description: d.message || "All maps & houses unlocked sequentially." });
+        fetchProfile();
+      },
+      onError: (err: any) => {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        setResults(r => ({ ...r, mapsHouses: { ok: false, msg: msg || "Failed to unlock maps & houses" } }));
+        toast({ title: "Unlock Failed", description: msg || "Error unlocking maps & houses", variant: "destructive" });
+      },
+    },
+  });
+
   const injectCars = useInjectCars({
     mutation: {
       onSuccess: (d: any) => {
@@ -1039,7 +1064,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
   };
 
   const anyPending =
-    injectCurrency.isPending || unlockMaps.isPending || unlockClubs.isPending ||
+    injectCurrency.isPending || unlockMaps.isPending || unlockClubs.isPending || unlockMapsHouses.isPending ||
     injectCars.isPending || unlockStreetPass.isPending || unlockProfileStyle.isPending || injectAll.isPending || safeRepair.isPending;
 
   const CURRENCY_PRESETS = [
@@ -1245,7 +1270,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         )}
 
         {/* Live Profile Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatBadge
             label="Cash (Silver)"
             value={profile ? `$${profile.silver.toLocaleString()}` : "Loading..."}
@@ -1282,14 +1307,8 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             }
           />
           <StatBadge
-            label="Clubs Unlocked"
-            value={profile ? `${profile.clubs_count} Clubs` : "Loading..."}
-            icon="🏆"
-            accent="border-yellow-500/40 bg-yellow-950/20"
-          />
-          <StatBadge
-            label="Garages / Houses"
-            value={profile ? `${profile.real_estates_count} Garages` : "Loading..."}
+            label="Houses & Clubs"
+            value={profile ? `${profile.real_estates_count} Garages · ${profile.clubs_count} Clubs` : "Loading..."}
             icon="🏠"
             accent="border-cyan-500/40 bg-cyan-950/20"
           />
@@ -1321,403 +1340,374 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Currency */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-bold text-white">Safe Currency & EXP</h3>
-            </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
-              Anti-Ban Increments
-            </span>
-          </div>
-
-          <p className="text-xs text-zinc-400">
-            Injecting millions at once triggers bans. Add safe increments one step at a time like cars.
-          </p>
-
-          {/* Quick 1-Click Steppers: +1,000 Cash, +1,000 Gold, +100 EXP */}
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              disabled={anyPending}
-              onClick={() => handleInjectCurrency({ service_type: "cash", cash: 1000 })}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 font-bold transition-all disabled:opacity-40"
-            >
-              <span className="text-xs">💵 +1,000</span>
-              <span className="text-[9px] text-emerald-400/80 uppercase font-semibold">Cash</span>
-            </button>
-            <button
-              type="button"
-              disabled={anyPending}
-              onClick={() => handleInjectCurrency({ service_type: "gold", gold: 1000 })}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 font-bold transition-all disabled:opacity-40"
-            >
-              <span className="text-xs">🪙 +1,000</span>
-              <span className="text-[9px] text-amber-400/80 uppercase font-semibold">Gold</span>
-            </button>
-            <button
-              type="button"
-              disabled={anyPending}
-              onClick={() => handleInjectCurrency({ service_type: "exp", exp: 100 })}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 font-bold transition-all disabled:opacity-40"
-            >
-              <span className="text-xs">⚡ +100</span>
-              <span className="text-[9px] text-blue-400/80 uppercase font-semibold">EXP</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
-            {CURRENCY_PRESETS.map(({ v, l, sub }) => (
-              <button
-                key={v}
-                onClick={() => setCurrencyPreset(v)}
-                className={`flex flex-col items-center py-2 px-1 rounded-xl text-center transition-all border ${
-                  currencyPreset === v
-                    ? "bg-amber-500 border-amber-400 text-black font-bold"
-                    : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
-                }`}
-              >
-                <span className="text-xs font-bold">{l}</span>
-                <span className={`text-[10px] mt-0.5 ${currencyPreset === v ? "text-black/70" : "text-zinc-600"}`}>{sub}</span>
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence>
-            {currencyPreset === CurrencyInputPreset.custom && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden space-y-2"
-              >
-                <NumInput label="Cash (Silver)" value={customSilver} onChange={setCustomSilver} min={0} max={1000000} placeholder="1000" icon="🪙" accent="text-zinc-300" />
-                <NumInput label="Gold" value={customGold} onChange={setCustomGold} min={0} max={100000} placeholder="1000" icon="💰" accent="text-yellow-400" />
-                <NumInput label="EXP" value={customXp} onChange={setCustomXp} min={0} max={100000} placeholder="100" icon="⚡" accent="text-blue-400" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <button
-            data-testid="button-inject-currency"
-            onClick={() => handleInjectCurrency()}
-            disabled={anyPending}
-            className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {injectCurrency.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Adding Step Bundle...</span>
-            ) : "Add Step Bundle (+1K Cash, +1K Gold, +100 EXP)"}
-          </button>
-          {results.currency && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.currency.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.currency.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.currency.msg}
-            </div>
-          )}
-        </div>
-
-        {/* Clubs & Houses */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-purple-400" />
-            <h3 className="text-sm font-bold text-white">Clubs & Houses</h3>
-          </div>
-          <p className="text-xs text-zinc-500">Unlock & beat all 22 clubs + 52 houses</p>
-          <button
-            data-testid="button-unlock-clubs"
-            onClick={() => unlockClubs.mutate({
-              data: {
-                token: session.token,
-                userId: session.carxId,
-                deviceId: session.deviceId,
-                uniqueId: session.uniqueId,
-                service_type: "unlock_clubs",
-                unlock_houses: true,
-                userToken
-              }
-            })}
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {unlockClubs.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking...</span>
-            ) : "Unlock Clubs & Houses"}
-          </button>
-          {results.clubs && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.clubs.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.clubs.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.clubs.msg}
-            </div>
-          )}
-        </div>
-
-        {/* Maps (Inject 1 at a time) */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Map className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-bold text-white">Maps (1-by-1)</h3>
-            </div>
-            {profile?.maps_count !== undefined && (
-              <span className="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-2 py-0.5 rounded-full">
-                {profile.maps_count}/6 Unlocked
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-white">Safe Currency & EXP</h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
+                Anti-Ban Increments
               </span>
-            )}
-          </div>
-          <p className="text-xs text-zinc-400">Inject game map areas safely one at a time</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { id: "next", label: "Next Locked" },
-              { id: "mountain", label: "Mountain" },
-              { id: "sunset", label: "Sunset" },
-              { id: "port", label: "Port" },
-              { id: "suburb", label: "Suburb" },
-              { id: "midtown", label: "Midtown" },
-            ].map((m) => {
-              const isUnlocked = profile?.unlocked_maps?.includes(m.id);
-              const isSel = selectedMap === m.id;
-              return (
+            </div>
+
+            <p className="text-xs text-zinc-400">
+              Injecting millions at once triggers bans. Add safe increments one step at a time like cars.
+            </p>
+
+            {/* Quick 1-Click Steppers: +1,000 Cash, +1,000 Gold, +100 EXP */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                disabled={anyPending}
+                onClick={() => handleInjectCurrency({ service_type: "cash", cash: 1000 })}
+                className="flex flex-col items-center justify-center p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/40 text-emerald-300 font-bold transition-all disabled:opacity-40"
+              >
+                <span className="text-xs">💵 +1,000</span>
+                <span className="text-[9px] text-emerald-400/80 uppercase font-semibold">Cash</span>
+              </button>
+              <button
+                type="button"
+                disabled={anyPending}
+                onClick={() => handleInjectCurrency({ service_type: "gold", gold: 1000 })}
+                className="flex flex-col items-center justify-center p-2 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/40 text-amber-300 font-bold transition-all disabled:opacity-40"
+              >
+                <span className="text-xs">🪙 +1,000</span>
+                <span className="text-[9px] text-amber-400/80 uppercase font-semibold">Gold</span>
+              </button>
+              <button
+                type="button"
+                disabled={anyPending}
+                onClick={() => handleInjectCurrency({ service_type: "exp", exp: 100 })}
+                className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/40 text-blue-300 font-bold transition-all disabled:opacity-40"
+              >
+                <span className="text-xs">⚡ +100</span>
+                <span className="text-[9px] text-blue-400/80 uppercase font-semibold">EXP</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-1">
+              {CURRENCY_PRESETS.map(({ v, l, sub }) => (
                 <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setSelectedMap(m.id)}
-                  className={`py-1.5 px-1 rounded-xl text-center transition-all border text-[11px] font-semibold cursor-pointer ${
-                    isSel
-                      ? "bg-cyan-500 border-cyan-400 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]"
-                      : isUnlocked
-                      ? "bg-zinc-800/80 border-cyan-700/40 text-cyan-300"
+                  key={v}
+                  onClick={() => setCurrencyPreset(v)}
+                  className={`flex flex-col items-center py-2 px-1 rounded-xl text-center transition-all border ${
+                    currencyPreset === v
+                      ? "bg-amber-500 border-amber-400 text-black font-bold"
                       : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
                   }`}
                 >
-                  {m.label} {isUnlocked && "✓"}
+                  <span className="text-xs font-bold">{l}</span>
+                  <span className={`text-[10px] mt-0.5 ${currencyPreset === v ? "text-black/70" : "text-zinc-600"}`}>{sub}</span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
+
+            <AnimatePresence>
+              {currencyPreset === CurrencyInputPreset.custom && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden space-y-2"
+                >
+                  <NumInput label="Cash (Silver)" value={customSilver} onChange={setCustomSilver} min={0} max={1000000} placeholder="1000" icon="🪙" accent="text-zinc-300" />
+                  <NumInput label="Gold" value={customGold} onChange={setCustomGold} min={0} max={100000} placeholder="1000" icon="💰" accent="text-yellow-400" />
+                  <NumInput label="EXP" value={customXp} onChange={setCustomXp} min={0} max={100000} placeholder="100" icon="⚡" accent="text-blue-400" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <button
-            data-testid="button-unlock-map"
-            onClick={() =>
-              unlockMaps.mutate({
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-inject-currency"
+              onClick={() => handleInjectCurrency()}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-400 font-bold text-xs transition-all disabled:opacity-40"
+            >
+              {injectCurrency.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Adding Step Bundle...</span>
+              ) : "Add Step Bundle (+1K Cash, +1K Gold, +100 EXP)"}
+            </button>
+            {results.currency && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.currency.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.currency.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.currency.msg}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Maps & Houses (1-Click Safe Unlock) */}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Map className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white">Maps & Real Estate</h3>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-medium">
+                1-Click Safe Unlock
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-400">
+              Unlocks all 6 world map zones (Mountain, Sunset, Port, Suburb, Midtown) plus all 52 garages/houses and 22 clubs one-by-one under the hood without slot corruption.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 py-1">
+              <div className="bg-zinc-800/60 border border-cyan-500/20 rounded-xl p-2.5 text-center">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase">World Maps</div>
+                <div className="text-sm font-bold text-cyan-300 font-mono mt-0.5">
+                  {profile ? `${profile.maps_count ?? 0} / 6 Active` : "6 Zones"}
+                </div>
+              </div>
+              <div className="bg-zinc-800/60 border border-purple-500/20 rounded-xl p-2.5 text-center">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase">Real Estate & Clubs</div>
+                <div className="text-sm font-bold text-purple-300 font-mono mt-0.5">
+                  {profile ? `${profile.real_estates_count}H · ${profile.clubs_count}C` : "52H · 22C"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-unlock-maps-houses"
+              onClick={() => unlockMapsHouses.mutate({
                 data: {
                   token: session.token,
                   userId: session.carxId,
                   deviceId: session.deviceId,
                   uniqueId: session.uniqueId,
-                  service_type: "unlock_map",
-                  map_name: selectedMap === "next" ? undefined : selectedMap,
-                  userToken,
-                },
-              })
-            }
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 font-bold text-xs transition-all disabled:opacity-40 cursor-pointer"
-          >
-            {unlockMaps.isPending ? (
-              <span className="flex items-center justify-center gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking Map...
-              </span>
-            ) : (
-              `Unlock Map ${selectedMap === "next" ? "(Next in Order)" : `(${selectedMap})`}`
-            )}
-          </button>
-          {results.maps && (
-            <div
-              className={`flex items-center gap-1.5 text-xs ${
-                results.maps.ok ? "text-green-400" : "text-red-400"
-              }`}
+                  service_type: "unlock_maps_houses",
+                  unlock_houses: true,
+                  unlock_maps: true,
+                  userToken
+                }
+              })}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600/30 via-teal-600/30 to-purple-600/30 hover:from-cyan-600/40 hover:via-teal-600/40 hover:to-purple-600/40 border border-cyan-500/40 text-cyan-300 hover:text-white font-bold text-xs transition-all disabled:opacity-40 shadow-sm cursor-pointer"
             >
-              {results.maps.ok ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+              {unlockMapsHouses.isPending ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking Maps & Houses One-by-One...
+                </span>
               ) : (
-                <AlertCircle className="w-3.5 h-3.5" />
+                "🗺️ Unlock All Maps & Houses (1-Click)"
               )}
-              {results.maps.msg}
-            </div>
-          )}
+            </button>
+            {results.mapsHouses && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.mapsHouses.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.mapsHouses.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.mapsHouses.msg}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Cars */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Car className="w-4 h-4 text-purple-400" />
-            <h3 className="text-sm font-bold text-white">Cars</h3>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            {CAR_MODES.map(({ v, l, sub }) => (
-              <button
-                key={v}
-                onClick={() => setCarsMode(v)}
-                className={`flex flex-col items-center py-2 px-1 rounded-xl text-center transition-all border ${
-                  carsMode === v
-                    ? "bg-purple-500 border-purple-400 text-white"
-                    : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
-                }`}
-              >
-                <span className="text-xs font-bold">{l}</span>
-                <span className={`text-[10px] mt-0.5 ${carsMode === v ? "text-white/70" : "text-zinc-600"}`}>{sub}</span>
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence>
-            {carsMode === CarsInjectInputMode.custom && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
-                    <span>🚗 Number of Cars</span>
-                    {totalCars > 0 && <span className="text-zinc-600 font-normal">max: {totalCars}</span>}
-                  </label>
-                  <input
-                    data-testid="input-custom-car-count"
-                    type="number"
-                    value={customCarCount}
-                    onChange={(e) => setCustomCarCount(e.target.value)}
-                    min={1}
-                    max={totalCars || 9999}
-                    placeholder="How many cars?"
-                    className="w-full bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-all font-mono"
-                  />
-                  <p className="text-[10px] text-zinc-600">Cars are added in order, skipping duplicates you already own</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <button
-            data-testid="button-inject-cars"
-            onClick={handleInjectCars}
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {injectCars.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Injecting...</span>
-            ) : "Inject Cars"}
-          </button>
-          {results.cars && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.cars.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.cars.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.cars.msg}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Car className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold text-white">Cars</h3>
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {CAR_MODES.map(({ v, l, sub }) => (
+                <button
+                  key={v}
+                  onClick={() => setCarsMode(v)}
+                  className={`flex flex-col items-center py-2 px-1 rounded-xl text-center transition-all border ${
+                    carsMode === v
+                      ? "bg-purple-500 border-purple-400 text-white"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  <span className="text-xs font-bold">{l}</span>
+                  <span className={`text-[10px] mt-0.5 ${carsMode === v ? "text-white/70" : "text-zinc-600"}`}>{sub}</span>
+                </button>
+              ))}
+            </div>
+
+            <AnimatePresence>
+              {carsMode === CarsInjectInputMode.custom && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
+                      <span>🚗 Number of Cars</span>
+                      {totalCars > 0 && <span className="text-zinc-600 font-normal">max: {totalCars}</span>}
+                    </label>
+                    <input
+                      data-testid="input-custom-car-count"
+                      type="number"
+                      value={customCarCount}
+                      onChange={(e) => setCustomCarCount(e.target.value)}
+                      min={1}
+                      max={totalCars || 9999}
+                      placeholder="How many cars?"
+                      className="w-full bg-zinc-800/80 border border-zinc-700/60 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-all font-mono"
+                    />
+                    <p className="text-[10px] text-zinc-600">Cars are added in order, skipping duplicates you already own</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-inject-cars"
+              onClick={handleInjectCars}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 font-bold text-xs transition-all disabled:opacity-40"
+            >
+              {injectCars.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Injecting...</span>
+              ) : "Inject Cars"}
+            </button>
+            {results.cars && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.cars.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.cars.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.cars.msg}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Street Pass */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-yellow-400" />
-            <h3 className="text-sm font-bold text-white">Street Pass</h3>
-          </div>
-          <p className="text-xs text-zinc-500">Unlock premium Street Pass & battle pass rewards</p>
-          <button
-            data-testid="button-unlock-streetpass"
-            onClick={() => unlockStreetPass.mutate({
-              data: {
-                token: session.token,
-                userId: session.carxId,
-                deviceId: session.deviceId,
-                uniqueId: session.uniqueId,
-                service_type: "battlepass",
-                unlock_streetpass: true,
-                userToken
-              }
-            })}
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {unlockStreetPass.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking...</span>
-            ) : "Unlock Street Pass"}
-          </button>
-          {results.streetPass && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.streetPass.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.streetPass.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.streetPass.msg}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <h3 className="text-sm font-bold text-white">Street Pass</h3>
             </div>
-          )}
+            <p className="text-xs text-zinc-500">Unlock premium Street Pass & battle pass rewards</p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-unlock-streetpass"
+              onClick={() => unlockStreetPass.mutate({
+                data: {
+                  token: session.token,
+                  userId: session.carxId,
+                  deviceId: session.deviceId,
+                  uniqueId: session.uniqueId,
+                  service_type: "battlepass",
+                  unlock_streetpass: true,
+                  userToken
+                }
+              })}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 font-bold text-xs transition-all disabled:opacity-40"
+            >
+              {unlockStreetPass.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking...</span>
+              ) : "Unlock Street Pass"}
+            </button>
+            {results.streetPass && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.streetPass.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.streetPass.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.streetPass.msg}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Avatars & Frames */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-pink-400" />
-            <h3 className="text-sm font-bold text-white">Avatars & Frames</h3>
-          </div>
-          <p className="text-xs text-zinc-500">Unlock all 16 profile avatars, custom banners & frames</p>
-          <button
-            data-testid="button-unlock-avatars"
-            onClick={() => unlockProfileStyle.mutate({
-              data: {
-                token: session.token,
-                userId: session.carxId,
-                deviceId: session.deviceId,
-                uniqueId: session.uniqueId,
-                service_type: "unlock_profile_style",
-                avatar: "avatar_16",
-                banner: "banner_16",
-                frame: "frame_16",
-                userToken
-              }
-            })}
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 text-pink-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {unlockProfileStyle.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking...</span>
-            ) : "Unlock Avatars & Frames"}
-          </button>
-          {results.profileStyle && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.profileStyle.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.profileStyle.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.profileStyle.msg}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-pink-400" />
+              <h3 className="text-sm font-bold text-white">Avatars & Frames</h3>
             </div>
-          )}
+            <p className="text-xs text-zinc-500">Unlock all 16 profile avatars, custom banners & frames</p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-unlock-avatars"
+              onClick={() => unlockProfileStyle.mutate({
+                data: {
+                  token: session.token,
+                  userId: session.carxId,
+                  deviceId: session.deviceId,
+                  uniqueId: session.uniqueId,
+                  service_type: "unlock_profile_style",
+                  avatar: "avatar_16",
+                  banner: "banner_16",
+                  frame: "frame_16",
+                  userToken
+                }
+              })}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 text-pink-400 font-bold text-xs transition-all disabled:opacity-40"
+            >
+              {unlockProfileStyle.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking...</span>
+              ) : "Unlock Avatars & Frames"}
+            </button>
+            {results.profileStyle && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.profileStyle.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.profileStyle.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.profileStyle.msg}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Fix Stuck / Safe Repair */}
-        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-sm font-bold text-white">Safe Repair</h3>
-          </div>
-          <p className="text-xs text-zinc-500">Fix checking profile stuck. Wipes garage to 1 starter car, resets slot tables.</p>
-          <button
-            data-testid="button-safe-repair"
-            onClick={() => {
-              if (window.confirm("🩹 WARNING: This will reset your garage to 1 starting car, beat all clubs, and repair all slot tables to 100% valid game database values. Use this if your game is stuck on 'Checking profile'. Proceed?")) {
-                safeRepair.mutate({
-                  data: {
-                    token: session.token,
-                    userId: session.carxId,
-                    deviceId: session.deviceId,
-                    uniqueId: session.uniqueId,
-                    service_type: "safe_repair",
-                    userToken
-                  }
-                });
-              }
-            }}
-            disabled={anyPending}
-            className="w-full py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 font-bold text-xs transition-all disabled:opacity-40"
-          >
-            {safeRepair.isPending ? (
-              <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Repairing...</span>
-            ) : "Fix Stuck / Safe Repair"}
-          </button>
-          {results.safeRepair && (
-            <div className={`flex items-center gap-1.5 text-xs ${results.safeRepair.ok ? "text-green-400" : "text-red-400"}`}>
-              {results.safeRepair.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-              {results.safeRepair.msg}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white">Safe Repair</h3>
             </div>
-          )}
+            <p className="text-xs text-zinc-500">Fix checking profile stuck. Wipes garage to 1 starter car, resets slot tables.</p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              data-testid="button-safe-repair"
+              onClick={() => {
+                if (window.confirm("🩹 WARNING: This will reset your garage to 1 starting car, beat all clubs, and repair all slot tables to 100% valid game database values. Use this if your game is stuck on 'Checking profile'. Proceed?")) {
+                  safeRepair.mutate({
+                    data: {
+                      token: session.token,
+                      userId: session.carxId,
+                      deviceId: session.deviceId,
+                      uniqueId: session.uniqueId,
+                      service_type: "safe_repair",
+                      userToken
+                    }
+                  });
+                }
+              }}
+              disabled={anyPending}
+              className="w-full py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 font-bold text-xs transition-all disabled:opacity-40"
+            >
+              {safeRepair.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Repairing...</span>
+              ) : "Fix Stuck / Safe Repair"}
+            </button>
+            {results.safeRepair && (
+              <div className={`flex items-center gap-1.5 text-xs ${results.safeRepair.ok ? "text-green-400" : "text-red-400"}`}>
+                {results.safeRepair.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.safeRepair.msg}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

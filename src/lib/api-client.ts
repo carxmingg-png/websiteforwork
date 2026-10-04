@@ -124,6 +124,14 @@ export function useUnlockMaps(options?: any) {
   });
 }
 
+export function useUnlockMapsHouses(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: any }) =>
+      fetchApi("/api/carx/inject", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
 export function useUnlockClubs(options?: any) {
   return useMutation({
     mutationFn: (vars: { data: any }) =>

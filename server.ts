@@ -3132,28 +3132,18 @@ export function modifyProfile(
     profile.quests[q].trigger = profile.quests[q].trigger || {};
   });
 
-  // 5. Maps (Inject one map at a time, never auto-injected when injecting cars or clubs)
-  const mapRequested = mods.inject_map || mods.unlock_map || mods.map_name;
-  if (mapRequested) {
-    const cleanMap = String(mapRequested).toLowerCase().trim();
+  // 5. Maps (never auto-injected when injecting cars)
+  if (mods.unlock_maps || mods.unlock_all) {
+    profile.game_world_parts = profile.game_world_parts || {};
+    for (const part of ALL_MAPS) {
+      profile.game_world_parts[part] = { unlocked: true };
+    }
+  } else if (mods.inject_map || mods.unlock_map || mods.map_name) {
+    const cleanMap = String(mods.inject_map || mods.unlock_map || mods.map_name).toLowerCase().trim();
     if (ALL_MAPS.includes(cleanMap)) {
       profile.game_world_parts = profile.game_world_parts || {};
       profile.game_world_parts[cleanMap] = { unlocked: true };
     }
-  } else if (mods.unlock_maps) {
-    // Unlock the next locked map one by one
-    profile.game_world_parts = profile.game_world_parts || {};
-    for (const part of ALL_MAPS) {
-      if (!profile.game_world_parts[part] || !profile.game_world_parts[part].unlocked) {
-        profile.game_world_parts[part] = { unlocked: true };
-        break; // strictly ONE map at a time
-      }
-    }
-  } else if (mods.unlock_all) {
-    profile.game_world_parts = profile.game_world_parts || {};
-    ALL_MAPS.forEach(part => {
-      profile.game_world_parts[part] = { unlocked: true };
-    });
   }
 
   // 6. Real Estates
@@ -4386,6 +4376,8 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     unlock_maps: "unlock_clubs",
     unlock_map: "unlock_clubs",
     inject_map: "unlock_clubs",
+    unlock_maps_houses: "unlock_clubs",
+    unlock_houses: "unlock_clubs",
     menu_restore: "safe_repair",
     restore: "safe_repair"
   };
@@ -4398,6 +4390,8 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     exp: 1,
     level: 1,
     unlock_clubs: 3,
+    unlock_maps_houses: 3,
+    unlock_houses: 3,
     get_all_cars: 4,
     add_cars_all: 4,
     add_cars_50: 3,
@@ -4622,16 +4616,25 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       } else if (service_type === "inject_med" || service_type === "currency_med") {
         modified = modifyProfile(profile, { cash: 1000, gold: 1000, exp: 100 }, userId);
         successMsg = "✅ Safe Step Currency added (+1,000 Cash, +1,000 Gold, +100 EXP safely)!";
-      } else if (service_type === "unlock_maps" || service_type === "unlock_map" || service_type === "inject_map" || service_type === "menu_maps") {
-        const mapToUnlock = req.body.map_name || req.body.map || req.body.inject_map || "";
-        const result = unlockMapOneByOne(profile, mapToUnlock);
-        modified = result.profile;
-        if (result.unlockedMap && result.unlockedMap !== "none") {
-          const mapCapitalized = result.unlockedMap.charAt(0).toUpperCase() + result.unlockedMap.slice(1);
-          successMsg = `✅ Successfully unlocked map: ${mapCapitalized}! (${result.totalUnlocked}/${ALL_MAPS.length} maps unlocked).`;
-        } else {
-          successMsg = `ℹ️ All ${ALL_MAPS.length} maps are already unlocked in this account!`;
-        }
+      } else if (
+        service_type === "unlock_maps_houses" ||
+        service_type === "unlock_clubs" ||
+        service_type === "unlock_maps" ||
+        service_type === "unlock_map" ||
+        service_type === "inject_map" ||
+        service_type === "menu_maps" ||
+        service_type === "unlock_houses"
+      ) {
+        modified = modifyProfile(profile, {
+          unlock_clubs: true,
+          unlock_houses: true,
+          unlock_maps: true
+        }, userId);
+        const gwp = modified?.game_world_parts || {};
+        const mapsCount = ALL_MAPS.filter(m => gwp[m]?.unlocked).length;
+        const housesCount = Object.keys(modified?.real_estates || {}).length;
+        const clubsCount = Object.keys(modified?.clubs || {}).length;
+        successMsg = `✅ Successfully unlocked all ${mapsCount}/${ALL_MAPS.length} Maps, ${housesCount} Houses/Garages, and ${clubsCount} Clubs safely!`;
       } else if (service_type === "add_cars_all") {
         const initialCount = Object.keys(profile.cars?.items || {}).length;
         modified = modifyProfile(profile, { get_all_cars: true }, userId);
@@ -4662,13 +4665,6 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         }
         modified = restoreData;
         successMsg = "✅ Backup profile successfully restored and uploaded!";
-      } else if (service_type === "unlock_clubs") {
-        modified = modifyProfile(profile, { unlock_clubs: true, unlock_houses, get_all_cars }, userId);
-        successMsg = "Successfully unlocked and completed all 7 Clubs!";
-        if (unlock_houses) successMsg += " (All Houses Unlocked)";
-        if (get_all_cars) successMsg += " (All Cars Injected)";
-        if (unlock_streetpass) successMsg += " (StreetPass Activated)";
-        if (inject_ep) successMsg += " (EP Point loops sent)";
       } else if (service_type === "get_all_cars") {
         const initialCount = Object.keys(profile.cars?.items || {}).length;
         modified = modifyProfile(profile, { get_all_cars: true, unlock_houses, unlock_clubs }, userId);
