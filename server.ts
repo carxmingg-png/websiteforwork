@@ -955,88 +955,45 @@ export function getRestoreProfile(): any {
   return null;
 }
 
-// ── Bot.py Ultimate Map Unlock Function ─────────────────────────────────────
-export function unlockMapsUltimate(profile: any): any {
-  if (!profile.game_world_parts) {
-    profile.game_world_parts = {};
+// ── Clean Map Unlock Logic (One by One) ─────────────────────────────────────
+export function unlockMapOneByOne(profile: any, mapName?: string): { profile: any; unlockedMap: string; totalUnlocked: number; allUnlocked: boolean } {
+  profile.game_world_parts = profile.game_world_parts || {};
+
+  if (mapName && ALL_MAPS.includes(mapName.toLowerCase())) {
+    const cleanMap = mapName.toLowerCase();
+    profile.game_world_parts[cleanMap] = { unlocked: true };
+    const totalUnlocked = ALL_MAPS.filter(m => profile.game_world_parts[m]?.unlocked).length;
+    return { profile, unlockedMap: cleanMap, totalUnlocked, allUnlocked: totalUnlocked === ALL_MAPS.length };
   }
-  for (const m of ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]) {
+
+  // Find the next locked map in sequence
+  let target = "";
+  for (const m of ALL_MAPS) {
+    if (!profile.game_world_parts[m] || !profile.game_world_parts[m].unlocked) {
+      target = m;
+      break;
+    }
+  }
+
+  if (target) {
+    profile.game_world_parts[target] = { unlocked: true };
+  }
+
+  const totalUnlocked = ALL_MAPS.filter(m => profile.game_world_parts[m]?.unlocked).length;
+  return {
+    profile,
+    unlockedMap: target || "none",
+    totalUnlocked,
+    allUnlocked: totalUnlocked === ALL_MAPS.length
+  };
+}
+
+export function unlockMapsUltimate(profile: any): any {
+  // Clean safe version: unlocks maps without corrupting slots, houses, or race counters
+  profile.game_world_parts = profile.game_world_parts || {};
+  for (const m of ALL_MAPS) {
     profile.game_world_parts[m] = { unlocked: true };
   }
-
-  profile.real_estates = profile.real_estates || {};
-  profile.real_estate_slots = profile.real_estate_slots || {};
-
-  for (const prop of REAL_ESTATE_PROPERTIES) {
-    const slots = [
-      { unlocked: true, car_id: "", is_empty: true },
-      { unlocked: true, car_id: "", is_empty: true },
-      { unlocked: true, car_id: "", is_empty: true }
-    ];
-    if (!profile.real_estates[prop]) {
-      profile.real_estates[prop] = { is_bought: true, slots };
-    } else {
-      const existing = profile.real_estates[prop];
-      existing.is_bought = true;
-      if (!Array.isArray(existing.slots) || existing.slots.length !== 3) {
-        existing.slots = slots;
-      } else {
-        for (const slot of existing.slots) {
-          slot.unlocked = true;
-          if (slot.car_id === undefined) slot.car_id = "";
-        }
-      }
-    }
-    for (let i = 0; i < 3; i++) {
-      const slotId = `${prop}_slot_${i}`;
-      if (!profile.real_estate_slots[slotId]) {
-        profile.real_estate_slots[slotId] = { unlocked: true, car_id: "" };
-      } else {
-        profile.real_estate_slots[slotId].unlocked = true;
-        if (profile.real_estate_slots[slotId].car_id === undefined) {
-          profile.real_estate_slots[slotId].car_id = "";
-        }
-      }
-    }
-  }
-
-  profile.locations = profile.locations || {};
-  profile.locations.default = profile.locations.default || {};
-  profile.locations.default.location_objects_set = profile.locations.default.location_objects_set || { keys: [] };
-  const locKeys: string[] = profile.locations.default.location_objects_set.keys;
-  const extraKeys = ["car_market_0", "car_showroom_0", "car_showroom_1", "car_showroom_2"];
-  for (const p of [...REAL_ESTATE_PROPERTIES, ...extraKeys]) {
-    if (!locKeys.includes(p)) {
-      locKeys.push(p);
-    }
-  }
-
-  profile.race_generators = profile.race_generators || {};
-  const ts = Math.floor(Date.now() / 1000);
-  const mountain = (profile.race_generators.game_world_mountain_farm_races = profile.race_generators.game_world_mountain_farm_races || {});
-  mountain.races_counter = { keys: ["mountain_race_farm_drift_DM001", "mountain_race_farm_sprint_ST001", "mountain_race_farm_free_drift_AO01", "mountain_race_farm_gymkhana_ao04"], values: [1, 2, 3, 4] };
-  mountain.races_set = { keys: ["mountain_race_farm_drift_DM005", "mountain_race_farm_sprint_ST004", "mountain_race_farm_free_drift_AO02", "mountain_race_farm_gymkhana_ao08"], values: [1, 2, 3, 4] };
-
-  const sunset = (profile.race_generators.game_world_sunset_farm_races = profile.race_generators.game_world_sunset_farm_races || {});
-  sunset.races_counter = { keys: ["speedway_race_farm_free_drift_AO01", "speedway_race_farm_sprint_DM01", "speedway_race_farm_sprint_DM05", "speedway_race_farm_gymkhana_ao01"], values: [1, 2, 3, 4] };
-  sunset.races_set = { keys: ["speedway_race_farm_free_drift_AO02", "speedway_race_farm_sprint_DM02", "speedway_race_simple_drift_DM01", "speedway_race_farm_gymkhana_ao01"], values: [1, 2, 3, 4] };
-
-  profile.races_ts = profile.races_ts || { keys: [], values: [] };
-  const allKeys = [
-    ...(mountain.races_counter?.keys || []),
-    ...(mountain.races_set?.keys || []),
-    ...(sunset.races_counter?.keys || []),
-    ...(sunset.races_set?.keys || [])
-  ];
-  for (const k of allKeys) {
-    if (!profile.races_ts.keys.includes(k)) {
-      profile.races_ts.keys.push(k);
-      profile.races_ts.values.push(ts);
-    }
-  }
-
-  profile.is_tutorial_finished = true;
-  profile.tutorial_step = 600;
   return profile;
 }
 
@@ -1349,6 +1306,10 @@ export function extractProfileStats(profile: any, debug = false) {
   );
   const banReason = profile.ban_reason || profile.profile?.ban_reason || profile.reason || (isBanned ? "Account flagged by server anti-cheat" : undefined);
 
+  // Maps
+  const gwp = profile.game_world_parts || profile.profile?.game_world_parts || {};
+  const unlockedMaps = ALL_MAPS.filter(m => gwp[m]?.unlocked);
+
   return {
     cash: finalCash,
     gold,
@@ -1364,6 +1325,9 @@ export function extractProfileStats(profile: any, debug = false) {
     cars_count: carsCount,
     clubs_count: clubsCount,
     real_estates_count: realEstatesCount,
+    maps_count: unlockedMaps.length,
+    unlocked_maps: unlockedMaps,
+    all_maps: ALL_MAPS,
     current_car_id: currentCarId,
     current_car: currentCarDesc,
     street_pass: hasStreetPass,
@@ -2030,22 +1994,77 @@ class CarXClient {
     return results.find(r => r !== null) || { success: false, response: null, message: "Save upload failed." };
   }
 
+  static async botRegisterDevice(deviceId: string) {
+    try {
+      await fetch(`${BASE_URL}/register_device`, {
+        method: "POST",
+        headers: {
+          "User-Agent": "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          deviceId,
+          platform: "android",
+          project: 4
+        })
+      });
+    } catch {}
+  }
+
+  static async botLogin(email: string, pass: string, customDeviceId?: string): Promise<{ success: boolean; token?: string; carxId?: string; message?: string }> {
+    const deviceId = (customDeviceId || crypto.randomUUID().replace(/-/g, "")).slice(0, 32);
+    const headers = {
+      "User-Agent": "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)",
+      "Accept": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded"
+    };
+    const body = new URLSearchParams({
+      deviceId,
+      deviceUniqueId: deviceId,
+      username: email,
+      password: pass,
+      project: "STREET"
+    }).toString();
+
+    try {
+      const r = await fetch(`${BASE_URL}/login`, {
+        method: "POST",
+        headers,
+        body
+      });
+      if (r.status === 200) {
+        const json = await r.json().catch(() => ({}));
+        const d = json.d || json;
+        return { success: true, token: d.token, carxId: d.carxId || d.carx_id };
+      }
+      const errText = await r.text().catch(() => "");
+      let errMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        errMsg = (j.e && j.e.message) || j.message || errText;
+      } catch {}
+      return { success: false, message: errMsg || `HTTP ${r.status}` };
+    } catch (e: any) {
+      return { success: false, message: e.message || "Failed to connect to CarX login" };
+    }
+  }
+
   static async deleteAnonymous(email: string, pass: string, deviceId?: string) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
-      const devId = deviceId || crypto.randomBytes(8).toString("hex");
-      CarXClient.registerDevice(devId);
+      const devId = (deviceId || crypto.randomBytes(8).toString("hex")).slice(0, 16);
+      await CarXClient.botRegisterDevice(devId);
 
       const headers = {
-        ...DEFAULT_HEADERS,
+        "User-Agent": "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)",
         "Content-Type": "application/x-www-form-urlencoded"
       };
       const body = new URLSearchParams({
         username: email,
         password: pass,
         project: "4"
-      });
+      }).toString();
 
       const response = await fetch(`${BASE_URL}/delete/anonymous`, {
         method: "POST",
@@ -2062,7 +2081,7 @@ class CarXClient {
       let errMsg = errText;
       try {
         const j = JSON.parse(errText);
-        errMsg = j.message || j.e?.message || errText;
+        errMsg = (j.e && j.e.message) || j.message || errText;
       } catch {}
       return { success: false, message: errMsg || `HTTP ${response.status}` };
     } catch (e: any) {
@@ -2071,19 +2090,20 @@ class CarXClient {
     }
   }
 
-  static async deleteWithToken(token: string, email: string, pass: string) {
+  static async deleteWithToken(token: string, email: string, pass?: string) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
       const headers = {
-        ...DEFAULT_HEADERS,
+        "User-Agent": "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)",
         "Authorization": fToken(token),
         "Content-Type": "application/x-www-form-urlencoded"
       };
-      const body = new URLSearchParams({
-        username: email,
-        password: pass
-      });
+      const params: Record<string, string> = { username: email };
+      if (pass) {
+        params.password = pass;
+      }
+      const body = new URLSearchParams(params).toString();
 
       const response = await fetch(`${BASE_URL}/delete`, {
         method: "POST",
@@ -2100,7 +2120,7 @@ class CarXClient {
       let errMsg = errText;
       try {
         const j = JSON.parse(errText);
-        errMsg = j.message || j.e?.message || errText;
+        errMsg = (j.e && j.e.message) || j.message || errText;
       } catch {}
       return { success: false, message: errMsg || `HTTP ${response.status}` };
     } catch (e: any) {
@@ -2113,39 +2133,54 @@ class CarXClient {
     return CarXClient.deleteWithToken(token, email, pass);
   }
 
-  static async deleteAccountAuto(email: string, pass: string, token?: string, deviceId?: string) {
-    // 1. Fast anonymous delete (exact matching from bot.py)
-    const anonRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
-    if (anonRes.success) {
-      return anonRes;
-    }
-
-    // 2. Try with active token if provided
+  static async deleteAccountAuto(email: string, pass?: string, token?: string, deviceId?: string) {
+    console.log(`[DELETE] Starting auto delete sequence for ${email}...`);
+    // 1. If active token is available, attempt token delete first
     if (token) {
+      console.log(`[DELETE] Trying active token delete...`);
       const tokenRes = await CarXClient.deleteWithToken(token, email, pass);
       if (tokenRes.success) {
         return tokenRes;
       }
+      console.log(`[DELETE] Active token delete failed:`, tokenRes.message);
     }
 
-    // 3. Log in to get fresh token and delete
-    const auth = await CarXClient.authenticate("login", email, pass, deviceId);
-    if (auth.success && auth.token) {
-      const tokenRes = await CarXClient.deleteWithToken(auth.token, email, pass);
-      if (tokenRes.success) {
-        return tokenRes;
+    // 2. Anonymous delete (exact matching from bot.py)
+    if (pass) {
+      console.log(`[DELETE] Trying anonymous delete...`);
+      const anonRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
+      if (anonRes.success) {
+        return anonRes;
       }
-    }
+      console.log(`[DELETE] Anonymous delete failed:`, anonRes.message);
 
-    // 4. Retry anonymous
-    const retryRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
-    if (retryRes.success) {
-      return { success: true, method: "anonymous-retry", message: "Account deleted successfully on retry." };
+      // 3. Log in with exact credentials via botLogin to obtain fresh token
+      console.log(`[DELETE] Logging in via bot.py protocol...`);
+      const bLog = await CarXClient.botLogin(email, pass, deviceId);
+      if (bLog.success && bLog.token) {
+        console.log(`[DELETE] Got fresh token, executing token delete...`);
+        const tokenRes = await CarXClient.deleteWithToken(bLog.token, email, pass);
+        if (tokenRes.success) {
+          return tokenRes;
+        }
+      }
+
+      // 4. Retry anonymous
+      console.log(`[DELETE] Retrying anonymous delete...`);
+      const retryRes = await CarXClient.deleteAnonymous(email, pass, deviceId);
+      if (retryRes.success) {
+        return { success: true, method: "anonymous-retry", message: "Account deleted successfully on retry." };
+      }
+
+      return {
+        success: false,
+        message: anonRes.message || "Failed to delete account. Check credentials or account status."
+      };
     }
 
     return {
       success: false,
-      message: anonRes.message || "Failed to delete account across all methods. Check your credentials."
+      message: "Password is required to delete this account."
     };
   }
 
@@ -2795,9 +2830,6 @@ export function sanitizeAndHealProfile(base: any, userId?: string, email?: strin
     if (!profileObject.game_world_parts || typeof profileObject.game_world_parts !== "object") {
       profileObject.game_world_parts = {};
     }
-    for (const part of ALL_MAPS) {
-      profileObject.game_world_parts[part] = { unlocked: true };
-    }
 
     if (!profileObject.locations || typeof profileObject.locations !== "object" || !profileObject.locations.default || !profileObject.locations.default.location_objects_set || !Array.isArray(profileObject.locations.default.location_objects_set.keys) || profileObject.locations.default.location_objects_set.keys.length === 0) {
       if (defaultBlueprint?.locations) {
@@ -2827,6 +2859,9 @@ export function modifyProfile(
     get_all_cars?: boolean;
     unlock_clubs?: boolean;
     unlock_maps?: boolean;
+    unlock_map?: string;
+    inject_map?: string;
+    map_name?: string;
     unlock_houses?: boolean;
     unlock_streetpass?: boolean;
     streetpass_points?: number;
@@ -3097,7 +3132,24 @@ export function modifyProfile(
     profile.quests[q].trigger = profile.quests[q].trigger || {};
   });
 
-  if (mods.unlock_maps || mods.unlock_clubs || mods.unlock_all || isFresh) {
+  // 5. Maps (Inject one map at a time, never auto-injected when injecting cars or clubs)
+  const mapRequested = mods.inject_map || mods.unlock_map || mods.map_name;
+  if (mapRequested) {
+    const cleanMap = String(mapRequested).toLowerCase().trim();
+    if (ALL_MAPS.includes(cleanMap)) {
+      profile.game_world_parts = profile.game_world_parts || {};
+      profile.game_world_parts[cleanMap] = { unlocked: true };
+    }
+  } else if (mods.unlock_maps) {
+    // Unlock the next locked map one by one
+    profile.game_world_parts = profile.game_world_parts || {};
+    for (const part of ALL_MAPS) {
+      if (!profile.game_world_parts[part] || !profile.game_world_parts[part].unlocked) {
+        profile.game_world_parts[part] = { unlocked: true };
+        break; // strictly ONE map at a time
+      }
+    }
+  } else if (mods.unlock_all) {
     profile.game_world_parts = profile.game_world_parts || {};
     ALL_MAPS.forEach(part => {
       profile.game_world_parts[part] = { unlocked: true };
@@ -4036,12 +4088,57 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
 // CarX Account Delete (Robust Anonymous + Token Auto Sequence from bot.py)
 app.post(["/api/carx/delete", "/carx/delete", "/api/carx/delete-account", "/carx/delete-account"], authMiddleware, async (req, res) => {
   const { token, email, password, deviceId } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password are required." });
+  if (!email && !token) {
+    return res.status(400).json({ success: false, message: "Email or Token is required." });
   }
 
-  const result = await CarXClient.deleteAccountAuto(email, password, token, deviceId);
+  const result = await CarXClient.deleteAccountAuto(email || "", password, token, deviceId);
   res.json(result);
+});
+
+// CarX Ban Status Checker (Works with active Token or Email/Password)
+app.post(["/api/carx/check-ban", "/carx/check-ban"], authMiddleware, async (req, res) => {
+  const { token, email, password, userId, deviceId, uniqueId } = req.body;
+  try {
+    let activeToken = token;
+    let activeUserId = userId;
+
+    if (!activeToken && email && password) {
+      console.log(`[CHECK BAN] Logging in for ban check on ${email}...`);
+      const auth = await CarXClient.botLogin(email, password, deviceId);
+      if (auth.success && auth.token) {
+        activeToken = auth.token;
+        activeUserId = auth.carxId;
+      } else {
+        const msg = auth.message || "";
+        if (/ban|block|suspend|forbidden|restrict/i.test(msg)) {
+          return res.json({
+            success: true,
+            isBanned: true,
+            banReason: msg,
+            statusText: "BANNED",
+            email
+          });
+        }
+        return res.status(400).json({ success: false, message: msg || "Failed to authenticate account for ban check." });
+      }
+    }
+
+    if (!activeToken) {
+      return res.status(400).json({ success: false, message: "Provide an active token or account email and password." });
+    }
+
+    const banStatus = await CarXClient.checkBanStatus(activeToken, activeUserId, deviceId, uniqueId);
+    return res.json({
+      success: true,
+      ...banStatus,
+      email: email || undefined,
+      userId: activeUserId || undefined
+    });
+  } catch (err: any) {
+    console.error("[CHECK BAN ERROR]", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to check ban status." });
+  }
 });
 
 // CarX Account Restore Backup (from bot.py restore profile)
@@ -4286,6 +4383,9 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     inject_step: "cash_gold",
     currency_step: "cash_gold",
     menu_maps: "unlock_clubs",
+    unlock_maps: "unlock_clubs",
+    unlock_map: "unlock_clubs",
+    inject_map: "unlock_clubs",
     menu_restore: "safe_repair",
     restore: "safe_repair"
   };
@@ -4321,7 +4421,10 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
     currency_med: 2,
     inject_step: 1,
     currency_step: 1,
-    menu_maps: 3,
+    menu_maps: 1,
+    unlock_maps: 1,
+    unlock_map: 1,
+    inject_map: 1,
     menu_restore: 2,
     restore: 2
   };
@@ -4519,9 +4622,16 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
       } else if (service_type === "inject_med" || service_type === "currency_med") {
         modified = modifyProfile(profile, { cash: 1000, gold: 1000, exp: 100 }, userId);
         successMsg = "✅ Safe Step Currency added (+1,000 Cash, +1,000 Gold, +100 EXP safely)!";
-      } else if (service_type === "menu_maps") {
-        modified = unlockMapsUltimate(profile);
-        successMsg = "✅ All 6 Maps, 53 Properties, Garages, Locations, and Race Generators unlocked successfully!";
+      } else if (service_type === "unlock_maps" || service_type === "unlock_map" || service_type === "inject_map" || service_type === "menu_maps") {
+        const mapToUnlock = req.body.map_name || req.body.map || req.body.inject_map || "";
+        const result = unlockMapOneByOne(profile, mapToUnlock);
+        modified = result.profile;
+        if (result.unlockedMap && result.unlockedMap !== "none") {
+          const mapCapitalized = result.unlockedMap.charAt(0).toUpperCase() + result.unlockedMap.slice(1);
+          successMsg = `✅ Successfully unlocked map: ${mapCapitalized}! (${result.totalUnlocked}/${ALL_MAPS.length} maps unlocked).`;
+        } else {
+          successMsg = `ℹ️ All ${ALL_MAPS.length} maps are already unlocked in this account!`;
+        }
       } else if (service_type === "add_cars_all") {
         const initialCount = Object.keys(profile.cars?.items || {}).length;
         modified = modifyProfile(profile, { get_all_cars: true }, userId);
@@ -4685,13 +4795,13 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
 
       let modified: any;
       if (isEverything) {
-        modified = unlockMapsUltimate(profile);
-        modified = injectCurrencyFromBot(modified, 1000, 1000, 100);
+        modified = injectCurrencyFromBot(profile, 50000000, 9999, 999999);
         modified = maxStreetPassPointsFromBot(modified, 1000000);
         modified = modifyProfile(modified, {
-          cash: 1000,
-          gold: 1000,
-          exp: 100,
+          cash: 50000000,
+          gold: 9999,
+          level: 50,
+          exp: 999999,
           unlock_clubs: true,
           get_all_cars: true,
           unlock_houses: true,
@@ -4699,9 +4809,10 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         }, userId);
       } else {
         modified = modifyProfile(profile, {
-          cash: 1000,
-          gold: 1000,
-          exp: 100,
+          cash: 50000000,
+          gold: 9999,
+          level: 50,
+          exp: 999999,
           unlock_clubs: true,
           get_all_cars: true,
           unlock_houses: true,

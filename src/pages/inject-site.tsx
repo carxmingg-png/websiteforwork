@@ -42,6 +42,8 @@ interface ProfileStats {
   cars: number;
   clubs_count: number;
   real_estates_count: number;
+  maps_count?: number;
+  unlocked_maps?: string[];
   current_car: string;
   current_car_id?: string;
   streetPass: boolean;
@@ -719,6 +721,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
   const [carsMode, setCarsMode] = useState<string>(CarsInjectInputMode.all);
   const [customCarCount, setCustomCarCount] = useState("50");
+  const [selectedMap, setSelectedMap] = useState<string>("next");
 
   const [results, setResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const [extractorModalOpen, setExtractorModalOpen] = useState(false);
@@ -771,6 +774,8 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             cars: d.stats.cars || d.stats.cars_count || 0,
             clubs_count: d.stats.clubs_count || 0,
             real_estates_count: d.stats.real_estates_count || 0,
+            maps_count: d.stats.maps_count !== undefined ? d.stats.maps_count : 0,
+            unlocked_maps: d.stats.unlocked_maps || [],
             current_car: d.stats.current_car || "toyotasupra2020",
             current_car_id: d.stats.current_car_id || "",
             streetPass: !!d.stats.street_pass,
@@ -810,8 +815,15 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
   const unlockMaps = useUnlockMaps({
     mutation: {
-      onSuccess: (d) => {
+      onSuccess: (d: any) => {
         setResults(r => ({ ...r, maps: { ok: true, msg: d.message || "Done" } }));
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            maps_count: d.stats.maps_count !== undefined ? d.stats.maps_count : p.maps_count,
+            unlocked_maps: d.stats.unlocked_maps || p.unlocked_maps,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err) => {
@@ -1233,7 +1245,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         )}
 
         {/* Live Profile Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           <StatBadge
             label="Cash (Silver)"
             value={profile ? `$${profile.silver.toLocaleString()}` : "Loading..."}
@@ -1280,6 +1292,12 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             value={profile ? `${profile.real_estates_count} Garages` : "Loading..."}
             icon="🏠"
             accent="border-cyan-500/40 bg-cyan-950/20"
+          />
+          <StatBadge
+            label="Maps Unlocked"
+            value={profile ? `${profile.maps_count ?? 0}/6 Maps` : "Loading..."}
+            icon="🗺️"
+            accent="border-teal-500/40 bg-teal-950/20"
           />
         </div>
 
@@ -1432,6 +1450,91 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             <div className={`flex items-center gap-1.5 text-xs ${results.clubs.ok ? "text-green-400" : "text-red-400"}`}>
               {results.clubs.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
               {results.clubs.msg}
+            </div>
+          )}
+        </div>
+
+        {/* Maps (Inject 1 at a time) */}
+        <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Map className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-white">Maps (1-by-1)</h3>
+            </div>
+            {profile?.maps_count !== undefined && (
+              <span className="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-2 py-0.5 rounded-full">
+                {profile.maps_count}/6 Unlocked
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-zinc-400">Inject game map areas safely one at a time</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { id: "next", label: "Next Locked" },
+              { id: "mountain", label: "Mountain" },
+              { id: "sunset", label: "Sunset" },
+              { id: "port", label: "Port" },
+              { id: "suburb", label: "Suburb" },
+              { id: "midtown", label: "Midtown" },
+            ].map((m) => {
+              const isUnlocked = profile?.unlocked_maps?.includes(m.id);
+              const isSel = selectedMap === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedMap(m.id)}
+                  className={`py-1.5 px-1 rounded-xl text-center transition-all border text-[11px] font-semibold cursor-pointer ${
+                    isSel
+                      ? "bg-cyan-500 border-cyan-400 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+                      : isUnlocked
+                      ? "bg-zinc-800/80 border-cyan-700/40 text-cyan-300"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
+                  }`}
+                >
+                  {m.label} {isUnlocked && "✓"}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            data-testid="button-unlock-map"
+            onClick={() =>
+              unlockMaps.mutate({
+                data: {
+                  token: session.token,
+                  userId: session.carxId,
+                  deviceId: session.deviceId,
+                  uniqueId: session.uniqueId,
+                  service_type: "unlock_map",
+                  map_name: selectedMap === "next" ? undefined : selectedMap,
+                  userToken,
+                },
+              })
+            }
+            disabled={anyPending}
+            className="w-full py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 font-bold text-xs transition-all disabled:opacity-40 cursor-pointer"
+          >
+            {unlockMaps.isPending ? (
+              <span className="flex items-center justify-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking Map...
+              </span>
+            ) : (
+              `Unlock Map ${selectedMap === "next" ? "(Next in Order)" : `(${selectedMap})`}`
+            )}
+          </button>
+          {results.maps && (
+            <div
+              className={`flex items-center gap-1.5 text-xs ${
+                results.maps.ok ? "text-green-400" : "text-red-400"
+              }`}
+            >
+              {results.maps.ok ? (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5" />
+              )}
+              {results.maps.msg}
             </div>
           )}
         </div>
