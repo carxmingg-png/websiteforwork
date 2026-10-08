@@ -13,18 +13,45 @@ U = "UnityPlayer/6000.0.64f1 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)"
 T = 60
 W = 3
 
-# Maps — Exact Full Map from User Account JSON
-import os
-map_json_path = os.path.join(os.path.dirname(__file__), "full_map_data.json")
-try:
-    with open(map_json_path, "r", encoding="utf-8") as _f:
-        M = json.load(_f)
-except Exception:
-    M = {
-        "game_world_parts": {d: {"unlocked": True} for d in ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]},
-        "locations": {"default": {"location_objects_set": {"keys": []}}},
-        "location_object_enter": {"keys": [], "values": []}
-    }
+# Maps — hardcoded from GameWorldPartType enum (from carx_v19.py)
+Ds = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]
+M = {
+    "game_world_parts": {},
+    "locations": {},
+    "race_generators": {},
+    "clubs": {},
+    "real_estates": {},
+    "real_estate_slots": {},
+    "car_to_club": {},
+    "car_to_real_estate_slot": {}
+}
+
+for d in Ds:
+    M["game_world_parts"][d] = {"unlocked": True}
+
+for d in Ds:
+    for t in ["tuning_shop", "styling_shop", "dealership", "gas_station", "race_location", "club_location"]:
+        M["locations"][f"{d}_{t}"] = {"type": t, "unlocked": True}
+    for rt in ["circuit", "sprint", "drift", "time_attack"]:
+        M["race_generators"][f"{d}_race_{rt}_01"] = {"type": rt, "unlocked": True}
+
+for c in [
+    "club_burnout_rangers", "club_black_lotus", "club_arctic_outlaws",
+    "club_speedstar_energy", "club_grip_masters", "club_chimeras",
+    "club_savage", "club_hyper_sonic", "club_white_tigers",
+    "club_scorpions", "club_red_dragons", "club_electric_dream",
+    "club_phantom_riders", "club_midnight_wolves", "club_iron_phoenix",
+    "club_shadow_racers", "club_velocity_kings", "club_steel_titans",
+    "club_neon_rebels"
+]:
+    M["clubs"][c] = {"joined": True}
+
+for e in [
+    "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
+    "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
+    "downtown_penthouse", "apartment_51", "apartment_95"
+]:
+    M["real_estates"][e] = {"slots": 6, "owned": True}
 
 
 

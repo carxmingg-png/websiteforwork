@@ -526,7 +526,6 @@ const bulkJobs: Record<string, {
 }> = {};
 
 import { EMBEDDED_PROFILE_TEMPLATE } from "./profile_template";
-import { EXACT_FULL_MAP_PAYLOAD, FULL_MAP_LOCATION_OBJECTS, FULL_LOCATION_OBJECT_ENTER } from "./full_map_data";
 import {
   ALL_NEON_REWARDS,
   ALL_NEON_BODY_PARTS,
@@ -916,7 +915,25 @@ export const VALID_COSMETIC_KEYS: string[] = [
 
 export const ORDERED_COSMETIC_SETS = EXTENDED_ORDERED_COSMETIC_SETS;
 
-export const ALL_MAP_LOCATION_OBJECTS: string[] = FULL_MAP_LOCATION_OBJECTS;
+export const ALL_MAP_LOCATION_OBJECTS: string[] = [
+  "gasstation_0", "gasstation_1", "gasstation_2", "gasstation_3", "gasstation_4", "gasstation_5", "gasstation_6",
+  "gasstation_7", "gasstation_8", "gasstation_9", "gasstation_10", "gasstation_11", "gasstation_12", "gasstation_13", "gasstation_14",
+  "tuning_0", "tuning_1", "tuning_2", "tuning_3", "tuning_4", "tuning_5", "tuning_6", "tuning_7", "tuning_8", "tuning_9",
+  "car_market_0", "car_showroom_0", "car_showroom_1", "car_showroom_2",
+  "apartment_01", "apartment_51", "apartment_95",
+  "apartment_industrial_SP", "apartment_midtown_SP", "apartment_midtown2_SP", "apartment_midtown3_SP",
+  "Industrial_apartment_1", "Industrial_apartment_2", "Industrial_apartment_3", "Industrial_apartment_4", "Industrial_apartment_5", "Industrial_apartment_6",
+  "Midtown_apartment_1", "Midtown_apartment_2", "Midtown_apartment_3", "Midtown_apartment_4", "Midtown_apartment_5", "Midtown_apartment_6",
+  "Midtown_apartment_7", "Midtown_apartment_8", "Midtown_apartment_9", "Midtown_apartment_10", "Midtown_apartment_11", "Midtown_apartment_12",
+  "Prigorod_apartment_1", "Prigorod_apartment_2", "Prigorod_apartment_3", "Prigorod_apartment_4", "Prigorod_apartment_5", "Prigorod_apartment_6", "Prigorod_apartment_7",
+  "Mountain_apartment_1", "Mountain_apartment_2", "Mountain_apartment_3", "Mountain_apartment_4", "Mountain_apartment_5", "Mountain_apartment_6",
+  "Mountain_apartment_7", "Mountain_apartment_8", "Mountain_apartment_9", "Mountain_apartment_11", "Mountain_apartment_13", "Mountain_apartment_14",
+  "Mountain_apartment_15", "Mountain_apartment_16", "Mountain_apartment_17", "Mountain_apartment_18", "Mountain_apartment_19",
+  "Speedway_apartment_1", "Speedway_apartment_2", "Speedway_apartment_3",
+  "club_burnout_rangers", "club_black_lotus", "club_arctic_outlaws", "club_speedstar_energy", "club_grip_masters", "club_chimeras", "club_savage",
+  "club_emeralds", "club_hyper_sonic", "club_spitfire", "club_drift_united", "club_falcons_outlaws", "club_pitons", "club_pythons", "club_speedline_syndicate",
+  "club_streethunters", "club_white_tigers", "club_21_tribe", "club_road_runner", "club_western_sierra"
+];
 
 export function getCarTemplate(descId: string): any {
   const cleanId = (ID_SELF_HEAL_MAP[descId] || descId).replace(/^car_/, "").replace(/_sp[12]/g, "");
@@ -1079,9 +1096,56 @@ export function unlockMapOneByOne(profile: any, mapName?: string): { profile: an
   };
 }
 
-// ── Maps & Districts — Exact Full Map from User Account JSON ─────────────────
+// ── Maps & Districts — Exact carx_v19.py implementation ───────────────────────
 export function buildV19MapsPayload(): Record<string, any> {
-  return structuredClone(EXACT_FULL_MAP_PAYLOAD);
+  const Ds = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"];
+  const M: Record<string, any> = {
+    game_world_parts: {},
+    locations: {},
+    race_generators: {},
+    clubs: {},
+    real_estates: {},
+    real_estate_slots: {},
+    car_to_club: {},
+    car_to_real_estate_slot: {}
+  };
+
+  for (const d of Ds) {
+    M.game_world_parts[d] = { unlocked: true };
+  }
+
+  for (const d of Ds) {
+    for (const t of ["tuning_shop", "styling_shop", "dealership", "gas_station", "race_location", "club_location"]) {
+      M.locations[`${d}_${t}`] = { type: t, unlocked: true };
+    }
+    for (const rt of ["circuit", "sprint", "drift", "time_attack"]) {
+      M.race_generators[`${d}_race_${rt}_01`] = { type: rt, unlocked: true };
+    }
+  }
+
+  const clubsList = [
+    "club_burnout_rangers", "club_black_lotus", "club_arctic_outlaws",
+    "club_speedstar_energy", "club_grip_masters", "club_chimeras",
+    "club_savage", "club_hyper_sonic", "club_white_tigers",
+    "club_scorpions", "club_red_dragons", "club_electric_dream",
+    "club_phantom_riders", "club_midnight_wolves", "club_iron_phoenix",
+    "club_shadow_racers", "club_velocity_kings", "club_steel_titans",
+    "club_neon_rebels"
+  ];
+  for (const c of clubsList) {
+    M.clubs[c] = { joined: true };
+  }
+
+  const realEstatesList = [
+    "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
+    "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
+    "downtown_penthouse", "apartment_51", "apartment_95"
+  ];
+  for (const e of realEstatesList) {
+    M.real_estates[e] = { slots: 6, owned: true };
+  }
+
+  return M;
 }
 
 export function deepMergeMaps(target: any, source: any): void {
@@ -1102,11 +1166,8 @@ export function unlockMapsUltimate(profile: any): any {
     if (k in profile && profile[k] && typeof profile[k] === "object" && !Array.isArray(profile[k])) {
       deepMergeMaps(profile[k], M[k]);
     } else {
-      profile[k] = structuredClone(M[k]);
+      profile[k] = M[k];
     }
-  }
-  if (FULL_LOCATION_OBJECT_ENTER) {
-    profile.location_object_enter = structuredClone(FULL_LOCATION_OBJECT_ENTER);
   }
   profile.data_version = (profile.data_version || 0) + 1;
   profile.messaging_version = profile.messaging_version || 1;

@@ -554,18 +554,6 @@ def create_slot_data():
     return real_estates, real_estate_slots
 
 def unlock_maps_ultimate(profile):
-    map_json_path = os.path.join(os.path.dirname(__file__), "full_map_data.json")
-    if os.path.exists(map_json_path):
-        try:
-            with open(map_json_path, "r", encoding="utf-8") as _mf:
-                full_map = json.load(_mf)
-            for k, v in full_map.items():
-                if k in profile and isinstance(profile[k], dict) and isinstance(v, dict):
-                    profile[k].update(v)
-                else:
-                    profile[k] = v
-        except Exception:
-            pass
     if 'game_world_parts' not in profile:
         profile['game_world_parts'] = {}
     for m in ['industrial', 'midtown', 'suburb', 'port', 'mountain', 'sunset']:
