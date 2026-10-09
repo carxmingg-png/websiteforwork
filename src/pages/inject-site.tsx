@@ -65,6 +65,21 @@ interface ProfileStats {
   avatars_count?: number;
   frames_count?: number;
   banners_count?: number;
+  neons_count?: number;
+  neons_total?: number;
+  neons_approved?: boolean;
+  tire_walls_count?: number;
+  tire_walls_total?: number;
+  tire_walls_approved?: boolean;
+  plates_count?: number;
+  plates_total?: number;
+  plates_approved?: boolean;
+  rims_count?: number;
+  rims_total?: number;
+  rims_approved?: boolean;
+  profile_styles_approved?: boolean;
+  maps_approved?: boolean;
+  houses_approved?: boolean;
   cars_list?: Array<{ id: string; descId: string; mileage?: number; rating?: number }>;
 }
 
@@ -1064,6 +1079,21 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             avatars_count: d.stats.avatars_count !== undefined ? d.stats.avatars_count : 0,
             frames_count: d.stats.frames_count !== undefined ? d.stats.frames_count : 0,
             banners_count: d.stats.banners_count !== undefined ? d.stats.banners_count : 0,
+            neons_count: d.stats.neons_count,
+            neons_total: d.stats.neons_total,
+            neons_approved: d.stats.neons_approved,
+            tire_walls_count: d.stats.tire_walls_count,
+            tire_walls_total: d.stats.tire_walls_total,
+            tire_walls_approved: d.stats.tire_walls_approved,
+            plates_count: d.stats.plates_count,
+            plates_total: d.stats.plates_total,
+            plates_approved: d.stats.plates_approved,
+            rims_count: d.stats.rims_count,
+            rims_total: d.stats.rims_total,
+            rims_approved: d.stats.rims_approved,
+            profile_styles_approved: d.stats.profile_styles_approved,
+            maps_approved: d.stats.maps_approved,
+            houses_approved: d.stats.houses_approved,
             cars_list: d.stats.cars_list || [],
           });
           if (isBannedAcc) {
@@ -1137,6 +1167,8 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             unlocked_maps: d.stats.unlocked_maps || p.unlocked_maps,
             clubs_count: d.stats.clubs_count !== undefined ? d.stats.clubs_count : p.clubs_count,
             real_estates_count: d.stats.real_estates_count !== undefined ? d.stats.real_estates_count : p.real_estates_count,
+            maps_approved: d.stats.maps_approved !== undefined ? d.stats.maps_approved : p.maps_approved,
+            houses_approved: d.stats.houses_approved !== undefined ? d.stats.houses_approved : p.houses_approved,
           }) : null);
         }
         toast({ title: "Unlocked!", description: d.message || "All maps & houses unlocked sequentially." });
@@ -1264,6 +1296,14 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
       onSuccess: (d: any) => {
         setResults(r => ({ ...r, neon: { ok: true, msg: d.message || "Neon Lights Injected!" } }));
         toast({ title: "Neon Injected!", description: d.message });
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            neons_count: d.stats.neons_count !== undefined ? d.stats.neons_count : p.neons_count,
+            neons_total: d.stats.neons_total !== undefined ? d.stats.neons_total : p.neons_total,
+            neons_approved: d.stats.neons_approved !== undefined ? d.stats.neons_approved : p.neons_approved,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err: any) => {
@@ -1278,6 +1318,14 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
       onSuccess: (d: any) => {
         setResults(r => ({ ...r, tireWalls: { ok: true, msg: d.message || "Tire Sidewalls Injected!" } }));
         toast({ title: "Tire Sidewalls Injected!", description: d.message });
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            tire_walls_count: d.stats.tire_walls_count !== undefined ? d.stats.tire_walls_count : p.tire_walls_count,
+            tire_walls_total: d.stats.tire_walls_total !== undefined ? d.stats.tire_walls_total : p.tire_walls_total,
+            tire_walls_approved: d.stats.tire_walls_approved !== undefined ? d.stats.tire_walls_approved : p.tire_walls_approved,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err: any) => {
@@ -1292,6 +1340,14 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
       onSuccess: (d: any) => {
         setResults(r => ({ ...r, numberPlates: { ok: true, msg: d.message || "Number Plates Injected!" } }));
         toast({ title: "Number Plates Injected!", description: d.message });
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            plates_count: d.stats.plates_count !== undefined ? d.stats.plates_count : p.plates_count,
+            plates_total: d.stats.plates_total !== undefined ? d.stats.plates_total : p.plates_total,
+            plates_approved: d.stats.plates_approved !== undefined ? d.stats.plates_approved : p.plates_approved,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err: any) => {
@@ -1306,6 +1362,14 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
       onSuccess: (d: any) => {
         setResults(r => ({ ...r, wheelRims: { ok: true, msg: d.message || "Wheel Rims Injected!" } }));
         toast({ title: "Wheel Rims Injected!", description: d.message });
+        if (d.stats) {
+          setProfile(p => p ? ({
+            ...p,
+            rims_count: d.stats.rims_count !== undefined ? d.stats.rims_count : p.rims_count,
+            rims_total: d.stats.rims_total !== undefined ? d.stats.rims_total : p.rims_total,
+            rims_approved: d.stats.rims_approved !== undefined ? d.stats.rims_approved : p.rims_approved,
+          }) : null);
+        }
         fetchProfile();
       },
       onError: (err: any) => {
@@ -1511,8 +1575,9 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     });
   };
 
-  const handleInjectNeon = () => {
+  const handleInjectNeon = (opt?: string, count?: number) => {
     if (!session) return;
+    const chosenOption = opt || neonOption;
     unlockNeon.mutate({
       data: {
         token: session.token,
@@ -1520,14 +1585,16 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         deviceId: session.deviceId,
         uniqueId: session.uniqueId,
         service_type: "unlock_neon",
-        neon_option: neonOption,
+        neon_option: chosenOption,
+        custom_count: count !== undefined ? count : (chosenOption === "next" ? 1 : undefined),
         userToken
       }
     });
   };
 
-  const handleInjectTireWalls = () => {
+  const handleInjectTireWalls = (opt?: string, count?: number) => {
     if (!session) return;
+    const chosenOption = opt || tireOption;
     unlockTireWalls.mutate({
       data: {
         token: session.token,
@@ -1535,14 +1602,16 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         deviceId: session.deviceId,
         uniqueId: session.uniqueId,
         service_type: "unlock_tire_walls",
-        tire_option: tireOption,
+        tire_option: chosenOption,
+        custom_count: count !== undefined ? count : (chosenOption === "next" ? 1 : undefined),
         userToken
       }
     });
   };
 
-  const handleInjectNumberPlates = () => {
+  const handleInjectNumberPlates = (opt?: string, count?: number) => {
     if (!session) return;
+    const chosenOption = opt || plateOption;
     unlockNumberPlates.mutate({
       data: {
         token: session.token,
@@ -1550,14 +1619,16 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         deviceId: session.deviceId,
         uniqueId: session.uniqueId,
         service_type: "unlock_number_plates",
-        plate_option: plateOption,
+        plate_option: chosenOption,
+        custom_count: count !== undefined ? count : (chosenOption === "next" ? 1 : undefined),
         userToken
       }
     });
   };
 
-  const handleInjectWheelRims = () => {
+  const handleInjectWheelRims = (opt?: string, count?: number) => {
     if (!session) return;
+    const chosenOption = opt || rimOption;
     unlockWheelRims.mutate({
       data: {
         token: session.token,
@@ -1565,13 +1636,15 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
         deviceId: session.deviceId,
         uniqueId: session.uniqueId,
         service_type: "unlock_wheel_rims",
-        rim_option: rimOption,
+        rim_option: chosenOption,
+        custom_count: count !== undefined ? count : (chosenOption === "next" ? 1 : undefined),
         userToken
       }
     });
   };
 
   const NEON_MODES = [
+    { v: "next", l: "Next (+1)", sub: "One by One" },
     { v: "all", l: "All Neons", sub: "15 Animated + Static" },
     { v: "animated", l: "Animated", sub: "15 Sequences" },
     { v: "pulse_flow", l: "Pulse & Flow", sub: "Neons 1-8" },
@@ -1580,18 +1653,21 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
   ];
 
   const TIRE_MODES = [
+    { v: "next", l: "Next (+1)", sub: "One by One" },
     { v: "all", l: "All Sidewalls", sub: "All 14 Branded" },
     { v: "racing_drift", l: "Racing & Drift", sub: "Faster, Drift, GripX" },
     { v: "street_style", l: "Street & Style", sub: "Shinobi, Donuts, Yolo" },
   ];
 
   const PLATE_MODES = [
+    { v: "next", l: "Next (+1)", sub: "One by One" },
     { v: "all", l: "All Plates", sub: "74+ Vanity & Events" },
     { v: "events", l: "Event Specials", sub: "Halloween, Lunar, Snow" },
     { v: "jdm_street", l: "JDM & Street", sub: "Akuma, Oni, 500HP" },
   ];
 
   const RIM_MODES = [
+    { v: "next", l: "Next (+1)", sub: "One by One" },
     { v: "all", l: "All Rims", sub: "412+ Rims Total" },
     { v: "battlepass", l: "Battle Pass", sub: "110 BP Exclusive Rims" },
     { v: "aftermarket_jdm", l: "Tuner & JDM", sub: "Classic Tuner 1-470" },
@@ -2039,9 +2115,17 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-cyan-300/80">6 Zones · 52 Garages · 22 Clubs</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold uppercase">
-                1-Click Unlock
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.maps_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ (6/6)
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-zinc-400" /> {profile ? `${profile.maps_count || 0}/6 UNLOCKED` : "1-CLICK UNLOCK"}
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
@@ -2397,9 +2481,21 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-pink-300/80">Avatars · Frames · Banners</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 font-bold uppercase">
-                {profile ? `${profile.avatars_count ?? 0}/20 Sets` : "20 Sets"}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.profile_styles_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ (20/20)
+                  </span>
+                ) : (profile?.avatars_count || 0) > 0 ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> {profile?.avatars_count}/20 SETS
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 font-bold uppercase">
+                    20 Sets
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
@@ -2515,16 +2611,28 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-cyan-300/80">Animated 1-15 & Static Chassis Kits</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold uppercase">
-                Cosmetics
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.neons_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ (15/15)
+                  </span>
+                ) : (profile?.neons_count || 0) > 0 ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> {profile?.neons_count}/15 KITS
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold uppercase">
+                    15 Kits
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
-              Unlock RGB animated and static chassis neon lighting kits in Battle Pass and garage styling.
+              Unlock RGB animated and static chassis neon lighting kits one-by-one or all 15 kits in Battle Pass and garage styling.
             </p>
 
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {NEON_MODES.map(({ v, l, sub }) => (
                 <button
                   key={v}
@@ -2544,9 +2652,27 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
           </div>
 
           <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleInjectNeon("next", 1)}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-200 font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)] flex items-center justify-center gap-1"
+              >
+                ⚡ NEXT (+1)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInjectNeon("all")}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-1"
+              >
+                🚀 ALL (15)
+              </button>
+            </div>
             <button
               data-testid="button-unlock-neon"
-              onClick={handleInjectNeon}
+              onClick={() => handleInjectNeon()}
               disabled={anyPending}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500 hover:from-cyan-500 hover:to-teal-400 text-white font-gaming font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)]"
             >
@@ -2556,7 +2682,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   INJECTING NEON...
                 </span>
               ) : (
-                `💡 INJECT NEON (${neonOption.toUpperCase()})`
+                neonOption === "next" ? "⚡ INJECT NEXT NEON (+1 ONE-BY-ONE)" : `💡 INJECT NEON (${neonOption.toUpperCase()})`
               )}
             </button>
             {results.neon && (
@@ -2581,16 +2707,28 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-amber-300/80">All 14 Branded Tires & Battle Pass</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold uppercase">
-                Tuning
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.tire_walls_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ (14/14)
+                  </span>
+                ) : (profile?.tire_walls_count || 0) > 0 ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> {profile?.tire_walls_count}/14 TIRES
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold uppercase">
+                    14 Tires
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
-              Inject Faster, DriftHunters, GripX, Shinobi, Toccata, Donuts and yellow brand lettering.
+              Inject Faster, DriftHunters, GripX, Shinobi, Toccata, Donuts and yellow brand lettering one-by-one or all at once.
             </p>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {TIRE_MODES.map(({ v, l, sub }) => (
                 <button
                   key={v}
@@ -2610,9 +2748,27 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
           </div>
 
           <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleInjectTireWalls("next", 1)}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 text-amber-200 font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.15)] flex items-center justify-center gap-1"
+              >
+                ⚡ NEXT (+1)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInjectTireWalls("all")}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-1"
+              >
+                🚀 ALL (14)
+              </button>
+            </div>
             <button
               data-testid="button-unlock-tire-walls"
-              onClick={handleInjectTireWalls}
+              onClick={() => handleInjectTireWalls()}
               disabled={anyPending}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-400 text-white font-gaming font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.25)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]"
             >
@@ -2622,7 +2778,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   INJECTING SIDEWALLS...
                 </span>
               ) : (
-                `🛞 INJECT SIDEWALLS (${tireOption.toUpperCase()})`
+                tireOption === "next" ? "⚡ INJECT NEXT SIDEWALL (+1 ONE-BY-ONE)" : `🛞 INJECT SIDEWALLS (${tireOption.toUpperCase()})`
               )}
             </button>
             {results.tireWalls && (
@@ -2647,16 +2803,28 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-purple-300/80">74+ Custom, JDM & Event Vanity Plates</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold uppercase">
-                Vanity
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.plates_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ ({profile?.plates_count}/74)
+                  </span>
+                ) : (profile?.plates_count || 0) > 0 ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> {profile?.plates_count}/74 PLATES
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold uppercase">
+                    74 Plates
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
-              Unlock Akuma Gold, Oni Graffiti, Lunar Carnival, Halloween, Championship and classic vanity plates.
+              Unlock Akuma Gold, Oni Graffiti, Lunar Carnival, Halloween, Championship and classic vanity plates one-by-one or all at once.
             </p>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {PLATE_MODES.map(({ v, l, sub }) => (
                 <button
                   key={v}
@@ -2676,9 +2844,27 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
           </div>
 
           <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleInjectNumberPlates("next", 1)}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 text-purple-200 font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.15)] flex items-center justify-center gap-1"
+              >
+                ⚡ NEXT (+1)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInjectNumberPlates("all")}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.3)] flex items-center justify-center gap-1"
+              >
+                🚀 ALL (74+)
+              </button>
+            </div>
             <button
               data-testid="button-unlock-number-plates"
-              onClick={handleInjectNumberPlates}
+              onClick={() => handleInjectNumberPlates()}
               disabled={anyPending}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-500 hover:from-purple-500 hover:to-indigo-400 text-white font-gaming font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]"
             >
@@ -2688,7 +2874,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   INJECTING PLATES...
                 </span>
               ) : (
-                `🔢 INJECT PLATES (${plateOption.toUpperCase()})`
+                plateOption === "next" ? "⚡ INJECT NEXT PLATE (+1 ONE-BY-ONE)" : `🔢 INJECT PLATES (${plateOption.toUpperCase()})`
               )}
             </button>
             {results.numberPlates && (
@@ -2713,16 +2899,28 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   <p className="text-[10px] font-chakra text-blue-300/80">412+ Rims & Battle Pass Exclusives</p>
                 </div>
               </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold uppercase">
-                Wheels
-              </span>
+              <div className="flex items-center gap-1.5">
+                {profile?.rims_approved ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> APPROVED ✅ ({profile?.rims_count} Rims)
+                  </span>
+                ) : (profile?.rims_count || 0) > 0 ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-amber-400" /> {profile?.rims_count} RIMS
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold uppercase">
+                    412 Rims
+                  </span>
+                )}
+              </div>
             </div>
 
             <p className="text-xs font-chakra text-zinc-400 leading-relaxed">
-              Inject all 400+ aftermarket tuner rims, 3-piece wheels, and 110 Battle Pass exclusive rim designs.
+              Inject all 400+ aftermarket tuner rims, 3-piece wheels, and 110 Battle Pass exclusive rim designs one-by-one or all at once.
             </p>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {RIM_MODES.map(({ v, l, sub }) => (
                 <button
                   key={v}
@@ -2742,9 +2940,27 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
           </div>
 
           <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleInjectWheelRims("next", 1)}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-500/50 text-blue-200 font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_10px_rgba(59,130,246,0.15)] flex items-center justify-center gap-1"
+              >
+                ⚡ NEXT (+1)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInjectWheelRims("all")}
+                disabled={anyPending}
+                className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-gaming font-bold text-[11px] tracking-wider uppercase transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.3)] flex items-center justify-center gap-1"
+              >
+                🚀 ALL (412+)
+              </button>
+            </div>
             <button
               data-testid="button-unlock-wheel-rims"
-              onClick={handleInjectWheelRims}
+              onClick={() => handleInjectWheelRims()}
               disabled={anyPending}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 hover:from-blue-500 hover:to-cyan-400 text-white font-gaming font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]"
             >
@@ -2754,7 +2970,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                   INJECTING RIMS...
                 </span>
               ) : (
-                `🏎️ INJECT RIMS (${rimOption.toUpperCase()})`
+                rimOption === "next" ? "⚡ INJECT NEXT RIM (+1 ONE-BY-ONE)" : `🏎️ INJECT RIMS (${rimOption.toUpperCase()})`
               )}
             </button>
             {results.wheelRims && (

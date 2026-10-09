@@ -1096,80 +1096,76 @@ export function unlockMapOneByOne(profile: any, mapName?: string): { profile: an
   };
 }
 
-// ── Maps & Districts — Exact carx_v19.py implementation ───────────────────────
-export function buildV19MapsPayload(): Record<string, any> {
-  const Ds = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"];
-  const M: Record<string, any> = {
-    game_world_parts: {},
-    locations: {},
-    race_generators: {},
-    clubs: {},
-    real_estates: {},
-    real_estate_slots: {},
-    car_to_club: {},
-    car_to_real_estate_slot: {}
-  };
+// ── Clean Maps & Houses Unlock (Exact map&php&house.py Implementation) ───────
+export const ALL_MAP_PARTS = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"];
 
-  for (const d of Ds) {
-    M.game_world_parts[d] = { unlocked: true };
+export const NEW_SHOP_PACKS = [
+  "special_avatars", "special_banners", "special_frames", "special_emoji",
+  "special_8", "special_11", "special_14", "special_15", "special_78",
+];
+
+export const DEFAULT_REAL_ESTATES = [
+  "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
+  "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
+  "downtown_penthouse", "apartment_51", "apartment_95"
+];
+
+export function unlockMapsOnly(data: any): void {
+  data.game_world_parts = data.game_world_parts || {};
+  for (const part of ALL_MAP_PARTS) {
+    data.game_world_parts[part] = data.game_world_parts[part] || {};
+    data.game_world_parts[part].unlocked = true;
   }
-
-  for (const d of Ds) {
-    for (const t of ["tuning_shop", "styling_shop", "dealership", "gas_station", "race_location", "club_location"]) {
-      M.locations[`${d}_${t}`] = { type: t, unlocked: true };
-    }
-    for (const rt of ["circuit", "sprint", "drift", "time_attack"]) {
-      M.race_generators[`${d}_race_${rt}_01`] = { type: rt, unlocked: true };
-    }
-  }
-
-  const clubsList = [
-    "club_burnout_rangers", "club_black_lotus", "club_arctic_outlaws",
-    "club_speedstar_energy", "club_grip_masters", "club_chimeras",
-    "club_savage", "club_hyper_sonic", "club_white_tigers",
-    "club_scorpions", "club_red_dragons", "club_electric_dream",
-    "club_phantom_riders", "club_midnight_wolves", "club_iron_phoenix",
-    "club_shadow_racers", "club_velocity_kings", "club_steel_titans",
-    "club_neon_rebels"
-  ];
-  for (const c of clubsList) {
-    M.clubs[c] = { joined: true };
-  }
-
-  const realEstatesList = [
-    "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
-    "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
-    "downtown_penthouse", "apartment_51", "apartment_95"
-  ];
-  for (const e of realEstatesList) {
-    M.real_estates[e] = { slots: 6, owned: true };
-  }
-
-  return M;
 }
 
-export function deepMergeMaps(target: any, source: any): void {
-  for (const k of Object.keys(source)) {
-    const v = source[k];
-    if (k in target && target[k] && typeof target[k] === "object" && !Array.isArray(target[k]) && v && typeof v === "object" && !Array.isArray(v)) {
-      deepMergeMaps(target[k], v);
-    } else {
-      target[k] = v;
+export function unlockProfileSafe(data: any): void {
+  const carId = String(data.current_car_id || "1000");
+  data.real_estate_slots = data.real_estate_slots || {};
+  for (let i = 0; i < 3; i++) {
+    const key = `apartment_95_slot_${i}`;
+    data.real_estate_slots[key] = data.real_estate_slots[key] || {};
+    data.real_estate_slots[key].unlocked = true;
+    if (i === 0) {
+      data.real_estate_slots[key].car_id = carId;
     }
   }
+  data.car_to_real_estate_slot = { keys: [carId], values: ["apartment_95_slot_0"] };
+
+  data.shop_owned_packs = data.shop_owned_packs || { keys: [] };
+  if (!Array.isArray(data.shop_owned_packs.keys)) data.shop_owned_packs.keys = [];
+  const existingPacks = new Set<string>(data.shop_owned_packs.keys);
+  for (const p of NEW_SHOP_PACKS) {
+    if (!existingPacks.has(p)) {
+      data.shop_owned_packs.keys.push(p);
+      existingPacks.add(p);
+    }
+  }
+
+  data.emoji = { keys: ["0", "1", "2", "3"], values: ["emoji_1", "emoji_2", "emoji_3", "emoji_4"] };
+}
+
+export function unlockAllHousesSafe(data: any): void {
+  data.real_estates = data.real_estates || {};
+  for (const k of DEFAULT_REAL_ESTATES) {
+    data.real_estates[k] = { is_bought: true };
+  }
+  for (const key of Object.keys(data.real_estates)) {
+    if (typeof data.real_estates[key] === "object" && data.real_estates[key] !== null) {
+      data.real_estates[key].is_bought = true;
+    } else {
+      data.real_estates[key] = { is_bought: true };
+    }
+  }
+  data.data_version = Math.max(74, (data.data_version || 0) + 1);
+  data.playerDataVersion = Math.max(74, (data.playerDataVersion || 0) + 1);
 }
 
 export function unlockMapsUltimate(profile: any): any {
   if (!profile || typeof profile !== "object") return profile;
-  const M = buildV19MapsPayload();
-  for (const k of Object.keys(M)) {
-    if (k in profile && profile[k] && typeof profile[k] === "object" && !Array.isArray(profile[k])) {
-      deepMergeMaps(profile[k], M[k]);
-    } else {
-      profile[k] = M[k];
-    }
-  }
-  profile.data_version = (profile.data_version || 0) + 1;
+  unlockMapsOnly(profile);
+  unlockProfileSafe(profile);
+  unlockAllHousesSafe(profile);
+  profile.data_version = Math.max(74, (profile.data_version || 0) + 1);
   profile.messaging_version = profile.messaging_version || 1;
   profile.model_upgrade_version = profile.model_upgrade_version || 1;
   return profile;
@@ -1177,51 +1173,75 @@ export function unlockMapsUltimate(profile: any): any {
 
 export const injectMapsV19 = unlockMapsUltimate;
 
-// ── Cosmetic Injection Helpers ───────────────────────────────────────────────
-export function injectNeonCosmetics(profile: any, option: string = "all"): { addedRewards: number; addedParts: number } {
-  const { rewards, carParts } = getNeonKeys(option);
-  let addedRewards = 0;
+// Helper to safely apply body parts to every car across garage
+function addPartsToAllCars(profile: any, carParts: string[]): number {
   let addedParts = 0;
-
-  profile.battle_pass_event_rewards = profile.battle_pass_event_rewards || { keys: [] };
-  if (!Array.isArray(profile.battle_pass_event_rewards.keys)) profile.battle_pass_event_rewards.keys = [];
-  const existingR = new Set<string>(profile.battle_pass_event_rewards.keys);
-  for (const rk of rewards) {
-    if (!existingR.has(rk)) {
-      profile.battle_pass_event_rewards.keys.push(rk);
-      existingR.add(rk);
-      addedRewards++;
-    }
-  }
-
-  if (profile.cars?.items && typeof profile.cars.items === "object") {
-    for (const cid in profile.cars.items) {
-      const car = profile.cars.items[cid];
-      if (!car || typeof car !== "object") continue;
-      car.body_part_set = car.body_part_set || { keys: [] };
-      if (!Array.isArray(car.body_part_set.keys)) car.body_part_set.keys = [];
-      const existingP = new Set<string>(car.body_part_set.keys);
-      for (const pk of carParts) {
-        if (!existingP.has(pk)) {
-          car.body_part_set.keys.push(pk);
-          existingP.add(pk);
-          addedParts++;
-        }
+  if (!profile || !carParts || carParts.length === 0) return 0;
+  const carsDict = profile.cars?.items || (profile.cars && typeof profile.cars === "object" && !Array.isArray(profile.cars) ? profile.cars : {});
+  for (const cid of Object.keys(carsDict)) {
+    const car = carsDict[cid];
+    if (!car || typeof car !== "object") continue;
+    car.body_part_set = car.body_part_set || { keys: [] };
+    if (!Array.isArray(car.body_part_set.keys)) car.body_part_set.keys = [];
+    const existingP = new Set<string>(car.body_part_set.keys);
+    for (const pk of carParts) {
+      if (!existingP.has(pk)) {
+        car.body_part_set.keys.push(pk);
+        existingP.add(pk);
+        addedParts++;
       }
     }
   }
-  return { addedRewards, addedParts };
+  return addedParts;
 }
 
-export function injectTireSidewalls(profile: any, option: string = "all"): { addedRewards: number; addedParts: number } {
-  const { rewards, carParts } = getTireSidewallKeys(option);
-  let addedRewards = 0;
-  let addedParts = 0;
-
+// ── Cosmetic Injection Helpers with One-by-One Support ───────────────────────
+export function injectNeonCosmetics(profile: any, option: string = "all", count?: number): { addedRewards: number; addedParts: number; messageDetail?: string } {
   profile.battle_pass_event_rewards = profile.battle_pass_event_rewards || { keys: [] };
   if (!Array.isArray(profile.battle_pass_event_rewards.keys)) profile.battle_pass_event_rewards.keys = [];
   const existingR = new Set<string>(profile.battle_pass_event_rewards.keys);
-  for (const rk of rewards) {
+
+  let targetRewards: string[] = [];
+  let targetParts: string[] = [];
+  let messageDetail = "";
+
+  if (option === "next" || count === 1) {
+    // One-by-one: find the first unowned neon in sequence 1..15
+    const nextReward = ALL_NEON_REWARDS.find(r => !existingR.has(r));
+    if (nextReward) {
+      targetRewards = [nextReward];
+      const match = nextReward.match(/\d+/);
+      const num = match ? match[0] : "1";
+      targetParts = [
+        "neon_front_static", "neon_side_static", "neon_rear_static",
+        "neon_front_empty", "neon_side_empty", "neon_rear_empty",
+        "neon_front_animated", "neon_side_animated", "neon_rear_animated",
+        `neon_front_animated_${num}`, `neon_side_animated_${num}`, `neon_rear_animated_${num}`, `neon_animated_${num}`
+      ];
+      messageDetail = `Neon Underglow #${num}`;
+    }
+  } else if (count && count > 1) {
+    const unowned = ALL_NEON_REWARDS.filter(r => !existingR.has(r));
+    targetRewards = unowned.slice(0, count);
+    const nums = targetRewards.map(r => r.match(/\d+/)?.[0]).filter(Boolean);
+    targetParts = [
+      "neon_front_static", "neon_side_static", "neon_rear_static",
+      "neon_front_empty", "neon_side_empty", "neon_rear_empty",
+      "neon_front_animated", "neon_side_animated", "neon_rear_animated"
+    ];
+    for (const num of nums) {
+      targetParts.push(`neon_front_animated_${num}`, `neon_side_animated_${num}`, `neon_rear_animated_${num}`, `neon_animated_${num}`);
+    }
+    messageDetail = `${targetRewards.length} Neon Underglows`;
+  } else {
+    const { rewards, carParts } = getNeonKeys(option);
+    targetRewards = rewards;
+    targetParts = carParts;
+    messageDetail = `All ${ALL_NEON_REWARDS.length} Neon Underglows`;
+  }
+
+  let addedRewards = 0;
+  for (const rk of targetRewards) {
     if (!existingR.has(rk)) {
       profile.battle_pass_event_rewards.keys.push(rk);
       existingR.add(rk);
@@ -1229,34 +1249,48 @@ export function injectTireSidewalls(profile: any, option: string = "all"): { add
     }
   }
 
-  if (profile.cars?.items && typeof profile.cars.items === "object") {
-    for (const cid in profile.cars.items) {
-      const car = profile.cars.items[cid];
-      if (!car || typeof car !== "object") continue;
-      car.body_part_set = car.body_part_set || { keys: [] };
-      if (!Array.isArray(car.body_part_set.keys)) car.body_part_set.keys = [];
-      const existingP = new Set<string>(car.body_part_set.keys);
-      for (const pk of carParts) {
-        if (!existingP.has(pk)) {
-          car.body_part_set.keys.push(pk);
-          existingP.add(pk);
-          addedParts++;
-        }
-      }
-    }
-  }
-  return { addedRewards, addedParts };
+  const addedParts = addPartsToAllCars(profile, targetParts);
+
+  // Ensure shop pack for cosmetic neons is owned
+  profile.shop_owned_packs = profile.shop_owned_packs || { keys: [] };
+  if (!Array.isArray(profile.shop_owned_packs.keys)) profile.shop_owned_packs.keys = [];
+  if (!profile.shop_owned_packs.keys.includes("special_78")) profile.shop_owned_packs.keys.push("special_78");
+
+  return { addedRewards, addedParts, messageDetail };
 }
 
-export function injectNumberPlates(profile: any, option: string = "all"): { addedRewards: number; addedParts: number } {
-  const { rewards, carParts } = getNumberPlateKeys(option);
-  let addedRewards = 0;
-  let addedParts = 0;
-
+export function injectTireSidewalls(profile: any, option: string = "all", count?: number): { addedRewards: number; addedParts: number; messageDetail?: string } {
   profile.battle_pass_event_rewards = profile.battle_pass_event_rewards || { keys: [] };
   if (!Array.isArray(profile.battle_pass_event_rewards.keys)) profile.battle_pass_event_rewards.keys = [];
   const existingR = new Set<string>(profile.battle_pass_event_rewards.keys);
-  for (const rk of rewards) {
+
+  let targetRewards: string[] = [];
+  let targetParts: string[] = [];
+  let messageDetail = "";
+
+  if (option === "next" || count === 1) {
+    const nextReward = ALL_TIRE_SIDE_WALL_REWARDS.find(r => !existingR.has(r));
+    if (nextReward) {
+      targetRewards = [nextReward];
+      const match = nextReward.replace(/^unlock_/, "");
+      targetParts = ALL_TIRE_SIDE_WALL_BODY_PARTS.filter(p => p.includes(match) || match.includes(p));
+      if (targetParts.length === 0) targetParts = ALL_TIRE_SIDE_WALL_BODY_PARTS.slice(0, 5);
+      messageDetail = `Tire Sidewall (${match})`;
+    }
+  } else if (count && count > 1) {
+    const unowned = ALL_TIRE_SIDE_WALL_REWARDS.filter(r => !existingR.has(r));
+    targetRewards = unowned.slice(0, count);
+    targetParts = ALL_TIRE_SIDE_WALL_BODY_PARTS;
+    messageDetail = `${targetRewards.length} Tire Sidewalls`;
+  } else {
+    const { rewards, carParts } = getTireSidewallKeys(option);
+    targetRewards = rewards;
+    targetParts = carParts;
+    messageDetail = `All ${ALL_TIRE_SIDE_WALL_REWARDS.length} Tire Sidewalls`;
+  }
+
+  let addedRewards = 0;
+  for (const rk of targetRewards) {
     if (!existingR.has(rk)) {
       profile.battle_pass_event_rewards.keys.push(rk);
       existingR.add(rk);
@@ -1264,34 +1298,42 @@ export function injectNumberPlates(profile: any, option: string = "all"): { adde
     }
   }
 
-  if (profile.cars?.items && typeof profile.cars.items === "object") {
-    for (const cid in profile.cars.items) {
-      const car = profile.cars.items[cid];
-      if (!car || typeof car !== "object") continue;
-      car.body_part_set = car.body_part_set || { keys: [] };
-      if (!Array.isArray(car.body_part_set.keys)) car.body_part_set.keys = [];
-      const existingP = new Set<string>(car.body_part_set.keys);
-      for (const pk of carParts) {
-        if (!existingP.has(pk)) {
-          car.body_part_set.keys.push(pk);
-          existingP.add(pk);
-          addedParts++;
-        }
-      }
-    }
-  }
-  return { addedRewards, addedParts };
+  const addedParts = addPartsToAllCars(profile, targetParts);
+  return { addedRewards, addedParts, messageDetail };
 }
 
-export function injectWheelRims(profile: any, option: string = "all"): { addedRewards: number; addedParts: number } {
-  const { rewards, carParts } = getWheelRimKeys(option);
-  let addedRewards = 0;
-  let addedParts = 0;
-
+export function injectNumberPlates(profile: any, option: string = "all", count?: number): { addedRewards: number; addedParts: number; messageDetail?: string } {
   profile.battle_pass_event_rewards = profile.battle_pass_event_rewards || { keys: [] };
   if (!Array.isArray(profile.battle_pass_event_rewards.keys)) profile.battle_pass_event_rewards.keys = [];
   const existingR = new Set<string>(profile.battle_pass_event_rewards.keys);
-  for (const rk of rewards) {
+
+  let targetRewards: string[] = [];
+  let targetParts: string[] = [];
+  let messageDetail = "";
+
+  if (option === "next" || count === 1) {
+    const nextReward = ALL_NUMBER_PLATE_REWARDS.find(r => !existingR.has(r));
+    if (nextReward) {
+      targetRewards = [nextReward];
+      const cleanName = nextReward.replace(/^unlock_/, "");
+      targetParts = ALL_NUMBER_PLATE_BODY_PARTS.filter(p => p.includes(cleanName) || cleanName.includes(p));
+      if (targetParts.length === 0) targetParts = [cleanName];
+      messageDetail = `Number Plate (${cleanName})`;
+    }
+  } else if (count && count > 1) {
+    const unowned = ALL_NUMBER_PLATE_REWARDS.filter(r => !existingR.has(r));
+    targetRewards = unowned.slice(0, count);
+    targetParts = ALL_NUMBER_PLATE_BODY_PARTS;
+    messageDetail = `${targetRewards.length} Number Plates`;
+  } else {
+    const { rewards, carParts } = getNumberPlateKeys(option);
+    targetRewards = rewards;
+    targetParts = carParts;
+    messageDetail = `All ${ALL_NUMBER_PLATE_REWARDS.length} Number Plates`;
+  }
+
+  let addedRewards = 0;
+  for (const rk of targetRewards) {
     if (!existingR.has(rk)) {
       profile.battle_pass_event_rewards.keys.push(rk);
       existingR.add(rk);
@@ -1299,23 +1341,54 @@ export function injectWheelRims(profile: any, option: string = "all"): { addedRe
     }
   }
 
-  if (profile.cars?.items && typeof profile.cars.items === "object") {
-    for (const cid in profile.cars.items) {
-      const car = profile.cars.items[cid];
-      if (!car || typeof car !== "object") continue;
-      car.body_part_set = car.body_part_set || { keys: [] };
-      if (!Array.isArray(car.body_part_set.keys)) car.body_part_set.keys = [];
-      const existingP = new Set<string>(car.body_part_set.keys);
-      for (const pk of carParts) {
-        if (!existingP.has(pk)) {
-          car.body_part_set.keys.push(pk);
-          existingP.add(pk);
-          addedParts++;
-        }
-      }
+  const addedParts = addPartsToAllCars(profile, targetParts);
+  return { addedRewards, addedParts, messageDetail };
+}
+
+export function injectWheelRims(profile: any, option: string = "all", count?: number): { addedRewards: number; addedParts: number; messageDetail?: string } {
+  profile.battle_pass_event_rewards = profile.battle_pass_event_rewards || { keys: [] };
+  if (!Array.isArray(profile.battle_pass_event_rewards.keys)) profile.battle_pass_event_rewards.keys = [];
+  const existingR = new Set<string>(profile.battle_pass_event_rewards.keys);
+
+  let targetRewards: string[] = [];
+  let targetParts: string[] = [];
+  let messageDetail = "";
+
+  if (option === "next" || count === 1) {
+    const nextReward = ALL_WHEEL_RIM_REWARDS.find(r => !existingR.has(r));
+    if (nextReward) {
+      targetRewards = [nextReward];
+      const num = nextReward.match(/\d+/)?.[0] || "1";
+      targetParts = [`wheel_rim_${num}`];
+      messageDetail = `Wheel Rim #${num}`;
+    } else {
+      // If all BP rewards owned, take next 5 aftermarket rims
+      targetParts = ALL_WHEEL_RIM_BODY_PARTS.slice(0, 10);
+      messageDetail = `10 Custom Tuner Rims`;
+    }
+  } else if (count && count > 1) {
+    const unowned = ALL_WHEEL_RIM_REWARDS.filter(r => !existingR.has(r));
+    targetRewards = unowned.slice(0, count);
+    targetParts = ALL_WHEEL_RIM_BODY_PARTS.slice(0, count * 5);
+    messageDetail = `${targetRewards.length || count} Wheel Rims`;
+  } else {
+    const { rewards, carParts } = getWheelRimKeys(option);
+    targetRewards = rewards;
+    targetParts = carParts;
+    messageDetail = `All 400+ Wheel Rims`;
+  }
+
+  let addedRewards = 0;
+  for (const rk of targetRewards) {
+    if (!existingR.has(rk)) {
+      profile.battle_pass_event_rewards.keys.push(rk);
+      existingR.add(rk);
+      addedRewards++;
     }
   }
-  return { addedRewards, addedParts };
+
+  const addedParts = addPartsToAllCars(profile, targetParts);
+  return { addedRewards, addedParts, messageDetail };
 }
 
 // ── Bot.py Implant Cars Logic ───────────────────────────────────────────────
@@ -1636,9 +1709,20 @@ export function extractProfileStats(profile: any, debug = false) {
   const bpKeys: string[] = Array.isArray(profile.battle_pass_event_rewards?.keys)
     ? profile.battle_pass_event_rewards.keys
     : (Array.isArray(profile.profile?.battle_pass_event_rewards?.keys) ? profile.profile.battle_pass_event_rewards.keys : []);
+  const bpSet = new Set<string>(bpKeys);
+
   const avatarsCount = bpKeys.filter((k: string) => k.startsWith("unlock_avatar_")).length;
   const framesCount = bpKeys.filter((k: string) => k.startsWith("unlock_frame_")).length;
   const bannersCount = bpKeys.filter((k: string) => k.startsWith("unlock_banner_")).length;
+
+  const neonsCount = ALL_NEON_REWARDS.filter(k => bpSet.has(k)).length;
+  const tireWallsCount = ALL_TIRE_SIDE_WALL_REWARDS.filter(k => bpSet.has(k)).length;
+  const platesCount = ALL_NUMBER_PLATE_REWARDS.filter(k => bpSet.has(k)).length;
+  const rimsBpCount = ALL_WHEEL_RIM_REWARDS.filter(k => bpSet.has(k)).length;
+
+  const activeCarParts: string[] = Array.isArray(activeCarObj?.body_part_set?.keys) ? activeCarObj.body_part_set.keys : [];
+  const rimsCarCount = activeCarParts.filter(k => k.startsWith("wheel_rim_")).length;
+  const totalRimsCount = Math.max(rimsBpCount * 40, rimsCarCount);
 
   return {
     cash: finalCash,
@@ -1666,6 +1750,21 @@ export function extractProfileStats(profile: any, debug = false) {
     avatars_count: avatarsCount,
     frames_count: framesCount,
     banners_count: bannersCount,
+    neons_count: neonsCount,
+    neons_total: ALL_NEON_REWARDS.length,
+    neons_approved: neonsCount === ALL_NEON_REWARDS.length,
+    tire_walls_count: tireWallsCount,
+    tire_walls_total: ALL_TIRE_SIDE_WALL_REWARDS.length,
+    tire_walls_approved: tireWallsCount === ALL_TIRE_SIDE_WALL_REWARDS.length,
+    plates_count: platesCount,
+    plates_total: ALL_NUMBER_PLATE_REWARDS.length,
+    plates_approved: platesCount >= 70,
+    rims_count: totalRimsCount,
+    rims_total: 412,
+    rims_approved: totalRimsCount >= 10,
+    profile_styles_approved: avatarsCount >= 18 && framesCount >= 18,
+    maps_approved: unlockedMaps.length === 6,
+    houses_approved: realEstatesCount >= 11,
     cars_list: carsList
   };
 }
@@ -3809,6 +3908,7 @@ export function modifyProfile(
     plate_option?: string;
     unlock_wheel_rims?: boolean;
     rim_option?: string;
+    custom_count?: number;
     inject_achievements?: boolean;
     overwrite_resources?: boolean;
     unlock_all?: boolean;
@@ -4296,16 +4396,16 @@ export function modifyProfile(
     profile.profile.frame = mods.frame;
   }
   if (mods.unlock_neon) {
-    injectNeonCosmetics(profile, mods.neon_option || "all");
+    injectNeonCosmetics(profile, mods.neon_option || "all", mods.custom_count);
   }
   if (mods.unlock_tire_walls) {
-    injectTireSidewalls(profile, mods.tire_option || "all");
+    injectTireSidewalls(profile, mods.tire_option || "all", mods.custom_count);
   }
   if (mods.unlock_number_plates) {
-    injectNumberPlates(profile, mods.plate_option || "all");
+    injectNumberPlates(profile, mods.plate_option || "all", mods.custom_count);
   }
   if (mods.unlock_wheel_rims) {
-    injectWheelRims(profile, mods.rim_option || "all");
+    injectWheelRims(profile, mods.rim_option || "all", mods.custom_count);
   }
   if (mods.unlock_all || mods.inject_everything) {
     injectNeonCosmetics(profile, "all");
@@ -5942,40 +6042,60 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
         }
       } else if (service_type === "unlock_neon") {
         const option = req.body.neon_option || neon_option || "all";
+        const count = req.body.custom_count ? parseInt(req.body.custom_count, 10) : (option === "next" ? 1 : undefined);
         modified = modifyProfile(profile, {
           unlock_neon: true,
           neon_option: option,
+          custom_count: count,
           unlock_houses,
           unlock_clubs
         }, userId);
-        successMsg = `✅ Successfully injected Neon Underglow! (${option.toUpperCase()} mode: unlocked battle pass neons and equipped all chassis glow kits).`;
+        const statsNow = extractProfileStats(modified, false);
+        successMsg = option === "next" || count === 1
+          ? `✅ Successfully injected next Neon Underglow one-by-one! (${statsNow.neons_count}/15 Neons Approved & Installed).`
+          : `✅ Successfully injected Neon Underglow! (${statsNow.neons_count}/15 Neons Approved & Installed).`;
       } else if (service_type === "unlock_tire_walls") {
         const option = req.body.tire_option || tire_option || "all";
+        const count = req.body.custom_count ? parseInt(req.body.custom_count, 10) : (option === "next" ? 1 : undefined);
         modified = modifyProfile(profile, {
           unlock_tire_walls: true,
           tire_option: option,
+          custom_count: count,
           unlock_houses,
           unlock_clubs
         }, userId);
-        successMsg = `✅ Successfully injected Tire Sidewalls! (${option.toUpperCase()} mode: unlocked all branded sidewalls and equipped across garage).`;
+        const statsNow = extractProfileStats(modified, false);
+        successMsg = option === "next" || count === 1
+          ? `✅ Successfully injected next Tire Sidewall one-by-one! (${statsNow.tire_walls_count}/14 Sidewalls Approved & Installed).`
+          : `✅ Successfully injected Tire Sidewalls! (${statsNow.tire_walls_count}/14 Sidewalls Approved & Installed).`;
       } else if (service_type === "unlock_number_plates") {
         const option = req.body.plate_option || plate_option || "all";
+        const count = req.body.custom_count ? parseInt(req.body.custom_count, 10) : (option === "next" ? 1 : undefined);
         modified = modifyProfile(profile, {
           unlock_number_plates: true,
           plate_option: option,
+          custom_count: count,
           unlock_houses,
           unlock_clubs
         }, userId);
-        successMsg = `✅ Successfully injected Custom Number Plates! (${option.toUpperCase()} mode: unlocked custom & event vanity plates).`;
+        const statsNow = extractProfileStats(modified, false);
+        successMsg = option === "next" || count === 1
+          ? `✅ Successfully injected next Number Plate one-by-one! (${statsNow.plates_count}/74 Plates Approved & Installed).`
+          : `✅ Successfully injected Custom Number Plates! (${statsNow.plates_count}/74 Plates Approved & Installed).`;
       } else if (service_type === "unlock_wheel_rims") {
         const option = req.body.rim_option || rim_option || "all";
+        const count = req.body.custom_count ? parseInt(req.body.custom_count, 10) : (option === "next" ? 1 : undefined);
         modified = modifyProfile(profile, {
           unlock_wheel_rims: true,
           rim_option: option,
+          custom_count: count,
           unlock_houses,
           unlock_clubs
         }, userId);
-        successMsg = `✅ Successfully injected Custom Wheel Rims! (${option.toUpperCase()} mode: unlocked 400+ custom rims & Battle Pass exclusives).`;
+        const statsNow = extractProfileStats(modified, false);
+        successMsg = option === "next" || count === 1
+          ? `✅ Successfully injected next Wheel Rims one-by-one! (${statsNow.rims_count} Rims Approved & Installed).`
+          : `✅ Successfully injected Custom Wheel Rims! (${statsNow.rims_count} Rims Approved & Installed).`;
       } else if (service_type === "inject_car") {
         if (!inject_car) {
           return res.status(400).json({ success: false, message: "Car model name (inject_car) is required." });

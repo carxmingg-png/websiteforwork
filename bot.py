@@ -542,56 +542,63 @@ def inject_currency(profile, silver=50000000, gold=9999, xp=999999):
     return profile
 
 # ============================================================
-# MAP UNLOCK — Exact logic from carx_v19.py
+# MAP UNLOCK — Clean Logic from map&php&house.py
 # ============================================================
-Ds = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]
-M = {
-    "game_world_parts": {},
-    "locations": {},
-    "race_generators": {},
-    "clubs": {},
-    "real_estates": {},
-    "real_estate_slots": {},
-    "car_to_club": {},
-    "car_to_real_estate_slot": {}
-}
-for d in Ds:
-    M["game_world_parts"][d] = {"unlocked": True}
-for d in Ds:
-    for t in ["tuning_shop", "styling_shop", "dealership", "gas_station", "race_location", "club_location"]:
-        M["locations"][f"{d}_{t}"] = {"type": t, "unlocked": True}
-    for rt in ["circuit", "sprint", "drift", "time_attack"]:
-        M["race_generators"][f"{d}_race_{rt}_01"] = {"type": rt, "unlocked": True}
-for c in [
-    "club_burnout_rangers", "club_black_lotus", "club_arctic_outlaws",
-    "club_speedstar_energy", "club_grip_masters", "club_chimeras",
-    "club_savage", "club_hyper_sonic", "club_white_tigers",
-    "club_scorpions", "club_red_dragons", "club_electric_dream",
-    "club_phantom_riders", "club_midnight_wolves", "club_iron_phoenix",
-    "club_shadow_racers", "club_velocity_kings", "club_steel_titans",
-    "club_neon_rebels"
-]:
-    M["clubs"][c] = {"joined": True}
-for e in [
+ALL_MAP_PARTS = ["industrial", "midtown", "suburb", "port", "mountain", "sunset"]
+
+NEW_SHOP_PACKS = [
+    "special_avatars", "special_banners", "special_frames", "special_emoji",
+    "special_8", "special_11", "special_14", "special_15", "special_78",
+]
+
+DEFAULT_REAL_ESTATES = [
     "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
     "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
     "downtown_penthouse", "apartment_51", "apartment_95"
-]:
-    M["real_estates"][e] = {"slots": 6, "owned": True}
+]
 
-def DM(a, b):
-    for k, v in b.items():
-        if k in a and isinstance(a[k], dict) and isinstance(v, dict):
-            DM(a[k], v)
-        else:
-            a[k] = v
+def unlock_maps(data):
+    gwp = data.setdefault("game_world_parts", {})
+    for part in ALL_MAP_PARTS:
+        gwp.setdefault(part, {})["unlocked"] = True
+
+def unlock_profile(data):
+    car_id = data.get("current_car_id", "1000")
+    slots = data.setdefault("real_estate_slots", {})
+    for i, key in enumerate(["apartment_95_slot_0", "apartment_95_slot_1", "apartment_95_slot_2"]):
+        slots.setdefault(key, {})["unlocked"] = True
+        if i == 0:
+            slots[key]["car_id"] = str(car_id)
+    data["car_to_real_estate_slot"] = {"keys": [str(car_id)], "values": ["apartment_95_slot_0"]}
+
+    keys = data.setdefault("shop_owned_packs", {"keys": []}).setdefault("keys", [])
+    added = [p for p in NEW_SHOP_PACKS if p not in keys]
+    keys.extend(added)
+
+    data["emoji"] = {"keys": ["0", "1", "2", "3"], "values": ["emoji_1", "emoji_2", "emoji_3", "emoji_4"]}
+
+def unlock_all_houses(data):
+    re = data.setdefault("real_estates", {})
+    if not re:
+        for k in DEFAULT_REAL_ESTATES:
+            re[k] = {"is_bought": True}
+    else:
+        for key in list(re.keys()):
+            if isinstance(re[key], dict):
+                re[key]["is_bought"] = True
+            else:
+                re[key] = {"is_bought": True}
+        for k in DEFAULT_REAL_ESTATES:
+            if k not in re:
+                re[k] = {"is_bought": True}
+    data["real_estates"] = re
+    data["data_version"] = max(74, (data.get("data_version", 0) or 0) + 1)
+    data["playerDataVersion"] = max(74, (data.get("playerDataVersion", 0) or 0) + 1)
 
 def unlock_maps_ultimate(profile):
-    for k, v in M.items():
-        if k in profile and isinstance(profile[k], dict):
-            DM(profile[k], v)
-        else:
-            profile[k] = v
+    unlock_maps(profile)
+    unlock_profile(profile)
+    unlock_all_houses(profile)
     return profile
 
 # ============================================================
