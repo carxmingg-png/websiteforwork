@@ -21,6 +21,7 @@ import {
   useUnlockWheelRims,
   useInjectAll,
   useSafeRepair,
+  useCleanRewriteAccount,
   useGetCars,
   getGetCarsQueryKey,
   useCheckBan,
@@ -1429,6 +1430,38 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     },
   });
 
+  const cleanRewriteAcc = useCleanRewriteAccount({
+    mutation: {
+      onSuccess: (d: any) => {
+        setResults(r => ({ ...r, cleanRewrite: { ok: true, msg: d.message || "Clean Rewrite Complete!" } }));
+        toast({ title: "Clean JSON Blueprint Rewritten! ✨", description: d.message || "All 52 houses, 6 districts, and profile references rewritten cleanly without errors." });
+        if (d.stats) {
+          setProfile(p => p ? ({ ...p, ...d.stats }) : null);
+        }
+        fetchProfile();
+      },
+      onError: (err: any) => {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        setResults(r => ({ ...r, cleanRewrite: { ok: false, msg: msg || "Failed to rewrite account" } }));
+        toast({ title: "Clean Rewrite Failed", description: msg, variant: "destructive" });
+      },
+    },
+  });
+
+  const handleCleanRewrite = () => {
+    if (!session) return;
+    cleanRewriteAcc.mutate({
+      data: {
+        token: session.token,
+        userId: session.carxId,
+        deviceId: session.deviceId,
+        uniqueId: session.uniqueId,
+        service_type: "clean_rewrite_account",
+        userToken
+      }
+    });
+  };
+
   const carsQuery = useGetCars(
     { userToken },
     { query: { queryKey: getGetCarsQueryKey({ userToken }), enabled: true } }
@@ -1527,7 +1560,7 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
     injectCurrency.isPending || unlockMaps.isPending || unlockClubs.isPending || unlockMapsHouses.isPending ||
     injectCars.isPending || unlockStreetPass.isPending || unlockProfileStyle.isPending ||
     unlockNeon.isPending || unlockTireWalls.isPending || unlockNumberPlates.isPending || unlockWheelRims.isPending ||
-    injectAll.isPending || safeRepair.isPending || checkBan.isPending;
+    injectAll.isPending || safeRepair.isPending || cleanRewriteAcc.isPending || checkBan.isPending;
 
   const CURRENCY_PRESETS = [
     { v: "step", l: "Safe Step (+1K)", sub: "+1K Cash / +1K Gold / +100 EXP" },
@@ -3006,6 +3039,16 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
           <div className="space-y-2 pt-2 border-t border-zinc-800/80">
             <button
+              data-testid="button-clean-rewrite"
+              onClick={handleCleanRewrite}
+              disabled={anyPending}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-black font-gaming font-black text-xs uppercase tracking-wider transition-all disabled:opacity-40 shadow-[0_0_25px_rgba(6,182,212,0.35)] hover:shadow-[0_0_35px_rgba(6,182,212,0.5)] cursor-pointer flex items-center justify-center gap-2"
+            >
+              {cleanRewriteAcc.isPending ? (
+                <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-4 h-4 animate-spin text-black" /> REWRITING CLEAN JSON BLUEPRINT...</span>
+              ) : "🧹 REWRITE CLEAN JSON // FIX REPORT ERROR"}
+            </button>
+            <button
               data-testid="button-safe-repair"
               onClick={() => {
                 if (window.confirm("🩹 WARNING: This will reset your garage to 1 starting car, beat all clubs, and repair all slot tables to 100% valid game database values. Use this if your game is stuck on 'Checking profile'. Proceed?")) {
@@ -3022,12 +3065,18 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
                 }
               }}
               disabled={anyPending}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-gaming font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 text-emerald-300 font-chakra font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
             >
               {safeRepair.isPending ? (
                 <span className="flex items-center justify-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> REPAIRING ACCOUNT...</span>
-              ) : "🔧 FIX STUCK / SAFE REPAIR"}
+              ) : "🔧 EMERGENCY RESET GARAGE / PURGE SLOTS"}
             </button>
+            {results.cleanRewrite && (
+              <div className={`flex items-center gap-1.5 text-xs font-mono ${results.cleanRewrite.ok ? "text-emerald-400" : "text-red-400"}`}>
+                {results.cleanRewrite.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {results.cleanRewrite.msg}
+              </div>
+            )}
             {results.safeRepair && (
               <div className={`flex items-center gap-1.5 text-xs font-mono ${results.safeRepair.ok ? "text-emerald-400" : "text-red-400"}`}>
                 {results.safeRepair.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}

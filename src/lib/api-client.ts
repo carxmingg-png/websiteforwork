@@ -219,6 +219,14 @@ export function useSafeRepair(options?: any) {
   });
 }
 
+export function useCleanRewriteAccount(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: any }) =>
+      fetchApi("/api/carx/inject", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
 export function useUnlockNeon(options?: any) {
   return useMutation({
     mutationFn: (vars: { data: any }) =>

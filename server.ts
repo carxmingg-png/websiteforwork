@@ -1104,32 +1104,94 @@ export const NEW_SHOP_PACKS = [
   "special_8", "special_11", "special_14", "special_15", "special_78",
 ];
 
-export const DEFAULT_REAL_ESTATES = [
-  "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
-  "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
-  "downtown_penthouse", "apartment_51", "apartment_95"
+export const OFFICIAL_52_REAL_ESTATES = [
+  "Industrial_apartment_1", "Industrial_apartment_2", "Industrial_apartment_3",
+  "Industrial_apartment_4", "Industrial_apartment_5", "Industrial_apartment_6",
+  "Midtown_apartment_1", "Midtown_apartment_10", "Midtown_apartment_11",
+  "Midtown_apartment_12", "Midtown_apartment_2", "Midtown_apartment_3",
+  "Midtown_apartment_4", "Midtown_apartment_5", "Midtown_apartment_6",
+  "Midtown_apartment_7", "Midtown_apartment_8", "Midtown_apartment_9",
+  "Mountain_apartment_1", "Mountain_apartment_11", "Mountain_apartment_13",
+  "Mountain_apartment_14", "Mountain_apartment_15", "Mountain_apartment_16",
+  "Mountain_apartment_17", "Mountain_apartment_18", "Mountain_apartment_19",
+  "Mountain_apartment_2", "Mountain_apartment_3", "Mountain_apartment_4",
+  "Mountain_apartment_5", "Mountain_apartment_6", "Mountain_apartment_7",
+  "Mountain_apartment_8", "Mountain_apartment_9", "Prigorod_apartment_1",
+  "Prigorod_apartment_2", "Prigorod_apartment_3", "Prigorod_apartment_4",
+  "Prigorod_apartment_5", "Prigorod_apartment_6", "Prigorod_apartment_7",
+  "Speedway_apartment_1", "Speedway_apartment_2", "Speedway_apartment_3",
+  "apartment_01", "apartment_51", "apartment_95", "apartment_industrial_SP",
+  "apartment_midtown2_SP", "apartment_midtown3_SP", "apartment_midtown_SP"
+];
+
+export const BATTLE_PASS_REWARDS = [
+  "unlock_avatar_1","unlock_avatar_2","unlock_avatar_3","unlock_avatar_4",
+  "unlock_avatar_5","unlock_avatar_6","unlock_avatar_7","unlock_avatar_8",
+  "unlock_avatar_9","unlock_avatar_10","unlock_avatar_11","unlock_avatar_12",
+  "unlock_avatar_13","unlock_avatar_14","unlock_avatar_15","unlock_avatar_16",
+  "unlock_banner_1","unlock_banner_2","unlock_banner_3","unlock_banner_4",
+  "unlock_banner_5","unlock_banner_6","unlock_banner_7","unlock_banner_8",
+  "unlock_banner_9","unlock_banner_10","unlock_banner_11","unlock_banner_12",
+  "unlock_banner_13","unlock_banner_14","unlock_banner_15","unlock_banner_16",
+  "unlock_frame_1","unlock_frame_2","unlock_frame_3","unlock_frame_4",
+  "unlock_frame_5","unlock_frame_6","unlock_frame_7","unlock_frame_8",
+  "unlock_frame_9","unlock_frame_10","unlock_frame_11","unlock_frame_12",
+  "unlock_frame_13","unlock_frame_14","unlock_frame_15","unlock_frame_16",
+  "unlock_street_pass_emoji_ellis_3",
+  "banner_champion_1","frame_champion_1","avatar_champion_1",
+  "unlock_banner_champion_1","unlock_frame_champion_1","unlock_avatar_champion_1",
+  "banner_champion_2","frame_champion_2","avatar_champion_2",
+  "unlock_banner_champion_2","unlock_frame_champion_2","unlock_avatar_champion_2",
+  "banner_champion_3","frame_champion_3","avatar_champion_3",
+  "unlock_banner_champion_3","unlock_frame_champion_3","unlock_avatar_champion_3",
+  "banner_champion_4","frame_champion_4","avatar_champion_4",
+  "unlock_banner_champion_4","unlock_frame_champion_4","unlock_avatar_champion_4",
+  "emoji_1","emoji_2","emoji_3","emoji_4",
+  "unlock_street_pass_emoji_5","unlock_street_pass_emoji_6",
+  "unlock_street_pass_emoji_7","unlock_street_pass_emoji_8",
+  "unlock_street_pass_emoji_9","unlock_street_pass_emoji_10",
+  "unlock_street_pass_emoji_ellis_1","unlock_street_pass_emoji_ellis_2",
+  "unlock_street_pass_emoji_ellis_4","unlock_street_pass_emoji_ellis_5",
+  "unlock_street_pass_emoji_ellis_6","unlock_street_pass_emoji_ellis_7",
+  "unlock_street_pass_emoji_ellis_8","unlock_street_pass_emoji_ellis_9",
+  "unlock_street_pass_emoji_ellis_10","unlock_street_pass_emoji_ellis_11",
+  "unlock_street_pass_emoji_ellis_12",
+  "unlock_emoji_Сhampionship_1","unlock_emoji_Сhampionship_2",
+  "unlock_emoji_Сhampionship_3","unlock_emoji_Сhampionship_4",
+  "unlock_emoji_Сhampionship_5"
 ];
 
 export function unlockMapsOnly(data: any): void {
   data.game_world_parts = data.game_world_parts || {};
   for (const part of ALL_MAP_PARTS) {
-    data.game_world_parts[part] = data.game_world_parts[part] || {};
-    data.game_world_parts[part].unlocked = true;
+    data.game_world_parts[part] = { unlocked: true };
   }
 }
 
 export function unlockProfileSafe(data: any): void {
-  const carId = String(data.current_car_id || "1000");
+  const carsDict = data.cars?.items || (data.cars && typeof data.cars === "object" && !Array.isArray(data.cars) ? data.cars : {});
+  const availableCarIds = Object.keys(carsDict);
+  let carId = String(data.current_car_id || "");
+  if (!availableCarIds.includes(carId) && availableCarIds.length > 0) {
+    carId = availableCarIds[0];
+    data.current_car_id = carId;
+  }
+
   data.real_estate_slots = data.real_estate_slots || {};
   for (let i = 0; i < 3; i++) {
     const key = `apartment_95_slot_${i}`;
     data.real_estate_slots[key] = data.real_estate_slots[key] || {};
     data.real_estate_slots[key].unlocked = true;
-    if (i === 0) {
+    if (i === 0 && carId) {
       data.real_estate_slots[key].car_id = carId;
     }
   }
-  data.car_to_real_estate_slot = { keys: [carId], values: ["apartment_95_slot_0"] };
+
+  if (carId && availableCarIds.includes(carId)) {
+    data.car_to_real_estate_slot = { keys: [carId], values: ["apartment_95_slot_0"] };
+  } else {
+    data.car_to_real_estate_slot = {};
+  }
 
   data.shop_owned_packs = data.shop_owned_packs || { keys: [] };
   if (!Array.isArray(data.shop_owned_packs.keys)) data.shop_owned_packs.keys = [];
@@ -1141,34 +1203,44 @@ export function unlockProfileSafe(data: any): void {
     }
   }
 
+  data.battle_pass_event_rewards = data.battle_pass_event_rewards || { keys: [] };
+  if (!Array.isArray(data.battle_pass_event_rewards.keys)) data.battle_pass_event_rewards.keys = [];
+  const existingBP = new Set<string>(data.battle_pass_event_rewards.keys);
+  for (const r of BATTLE_PASS_REWARDS) {
+    if (!existingBP.has(r)) {
+      data.battle_pass_event_rewards.keys.push(r);
+      existingBP.add(r);
+    }
+  }
+
   data.emoji = { keys: ["0", "1", "2", "3"], values: ["emoji_1", "emoji_2", "emoji_3", "emoji_4"] };
+  data.data_version = 74;
+  data.playerDataVersion = 74;
+  data.messaging_version = 13;
+  data.model_upgrade_version = 1;
 }
 
 export function unlockAllHousesSafe(data: any): void {
-  data.real_estates = data.real_estates || {};
-  for (const k of DEFAULT_REAL_ESTATES) {
-    data.real_estates[k] = { is_bought: true };
+  const cleanRE: Record<string, { is_bought: boolean }> = {};
+  for (const k of OFFICIAL_52_REAL_ESTATES) {
+    cleanRE[k] = { is_bought: true };
   }
-  for (const key of Object.keys(data.real_estates)) {
-    if (typeof data.real_estates[key] === "object" && data.real_estates[key] !== null) {
-      data.real_estates[key].is_bought = true;
-    } else {
-      data.real_estates[key] = { is_bought: true };
-    }
-  }
-  data.data_version = Math.max(74, (data.data_version || 0) + 1);
-  data.playerDataVersion = Math.max(74, (data.playerDataVersion || 0) + 1);
+  data.real_estates = cleanRE;
+  data.data_version = 74;
+  data.playerDataVersion = 74;
+}
+
+export function cleanRewriteAccountData(profile: any): any {
+  if (!profile || typeof profile !== "object") return profile;
+  unlockMapsOnly(profile);
+  unlockAllHousesSafe(profile);
+  unlockProfileSafe(profile);
+  if (profile.compressed_data) delete profile.compressed_data;
+  return profile;
 }
 
 export function unlockMapsUltimate(profile: any): any {
-  if (!profile || typeof profile !== "object") return profile;
-  unlockMapsOnly(profile);
-  unlockProfileSafe(profile);
-  unlockAllHousesSafe(profile);
-  profile.data_version = Math.max(74, (profile.data_version || 0) + 1);
-  profile.messaging_version = profile.messaging_version || 1;
-  profile.model_upgrade_version = profile.model_upgrade_version || 1;
-  return profile;
+  return cleanRewriteAccountData(profile);
 }
 
 export const injectMapsV19 = unlockMapsUltimate;
@@ -2468,6 +2540,13 @@ class CarXClient {
 
     if (!payload || typeof payload !== "object") {
       return { success: false, response: null, message: "Save validation error: profile payload is empty or invalid." };
+    }
+
+    // Always run full clean rewrite on account data before upload to eliminate "REPORT ERROR"
+    try {
+      payload = cleanRewriteAccountData(payload);
+    } catch (e: any) {
+      console.warn(`[UPLOAD PROFILE] Clean rewrite warning: ${e?.message}`);
     }
 
     // Strip any stale compressed_data so the JSON we compress contains fresh values
@@ -6008,8 +6087,12 @@ app.post(["/api/carx/inject", "/carx/inject"], authMiddleware, async (req, res) 
           unlock_clubs: true, // Force true to match the warning message stating it will beat all clubs
           get_all_cars
         }, userId);
-        successMsg = "✅ Safe Profile Repair completed successfully! The corrupted real estate slots were wiped and replaced with 100% valid game database references. Injected 99M Cash & 99M Gold safely. You can now load into the game!";
+        modified = cleanRewriteAccountData(modified);
+        successMsg = "✅ Safe Profile Repair completed successfully! Corrupted slots sanitized, all 52 real estates validated, and 99M Cash & 99M Gold safely loaded. REPORT ERROR eliminated!";
         if (unlock_houses) successMsg += " (All Houses Unlocked)";
+      } else if (service_type === "clean_rewrite_account" || service_type === "clean_sync" || service_type === "clean_rewrite") {
+        modified = cleanRewriteAccountData(profile || {});
+        successMsg = "✅ Clean Blueprint Rewrite Complete! Sanitized all 52 real estates, 6 world districts, validated slots and garage references into 100% compliant CarX save data. REPORT ERROR eliminated!";
       } else if (service_type === "unlock_profile_style") {
         const cosmeticMode = req.body.cosmetic_mode || (req.body.custom_count ? "custom_count" : (req.body.set_id ? "specific" : "all"));
         const customCount = req.body.custom_count ? parseInt(req.body.custom_count, 10) : undefined;

@@ -551,55 +551,120 @@ NEW_SHOP_PACKS = [
     "special_8", "special_11", "special_14", "special_15", "special_78",
 ]
 
-DEFAULT_REAL_ESTATES = [
-    "apartment_01", "suburb_house", "port_loft", "industrial_warehouse",
-    "mountain_cabin", "sunset_villa", "beach_condo", "midtown_apartment_02",
-    "downtown_penthouse", "apartment_51", "apartment_95"
+OFFICIAL_52_REAL_ESTATES = [
+    "Industrial_apartment_1", "Industrial_apartment_2", "Industrial_apartment_3",
+    "Industrial_apartment_4", "Industrial_apartment_5", "Industrial_apartment_6",
+    "Midtown_apartment_1", "Midtown_apartment_10", "Midtown_apartment_11",
+    "Midtown_apartment_12", "Midtown_apartment_2", "Midtown_apartment_3",
+    "Midtown_apartment_4", "Midtown_apartment_5", "Midtown_apartment_6",
+    "Midtown_apartment_7", "Midtown_apartment_8", "Midtown_apartment_9",
+    "Mountain_apartment_1", "Mountain_apartment_11", "Mountain_apartment_13",
+    "Mountain_apartment_14", "Mountain_apartment_15", "Mountain_apartment_16",
+    "Mountain_apartment_17", "Mountain_apartment_18", "Mountain_apartment_19",
+    "Mountain_apartment_2", "Mountain_apartment_3", "Mountain_apartment_4",
+    "Mountain_apartment_5", "Mountain_apartment_6", "Mountain_apartment_7",
+    "Mountain_apartment_8", "Mountain_apartment_9", "Prigorod_apartment_1",
+    "Prigorod_apartment_2", "Prigorod_apartment_3", "Prigorod_apartment_4",
+    "Prigorod_apartment_5", "Prigorod_apartment_6", "Prigorod_apartment_7",
+    "Speedway_apartment_1", "Speedway_apartment_2", "Speedway_apartment_3",
+    "apartment_01", "apartment_51", "apartment_95", "apartment_industrial_SP",
+    "apartment_midtown2_SP", "apartment_midtown3_SP", "apartment_midtown_SP"
+]
+
+BATTLE_PASS_REWARDS = [
+    "unlock_avatar_1","unlock_avatar_2","unlock_avatar_3","unlock_avatar_4",
+    "unlock_avatar_5","unlock_avatar_6","unlock_avatar_7","unlock_avatar_8",
+    "unlock_avatar_9","unlock_avatar_10","unlock_avatar_11","unlock_avatar_12",
+    "unlock_avatar_13","unlock_avatar_14","unlock_avatar_15","unlock_avatar_16",
+    "unlock_banner_1","unlock_banner_2","unlock_banner_3","unlock_banner_4",
+    "unlock_banner_5","unlock_banner_6","unlock_banner_7","unlock_banner_8",
+    "unlock_banner_9","unlock_banner_10","unlock_banner_11","unlock_banner_12",
+    "unlock_banner_13","unlock_banner_14","unlock_banner_15","unlock_banner_16",
+    "unlock_frame_1","unlock_frame_2","unlock_frame_3","unlock_frame_4",
+    "unlock_frame_5","unlock_frame_6","unlock_frame_7","unlock_frame_8",
+    "unlock_frame_9","unlock_frame_10","unlock_frame_11","unlock_frame_12",
+    "unlock_frame_13","unlock_frame_14","unlock_frame_15","unlock_frame_16",
+    "unlock_street_pass_emoji_ellis_3",
+    "banner_champion_1","frame_champion_1","avatar_champion_1",
+    "unlock_banner_champion_1","unlock_frame_champion_1","unlock_avatar_champion_1",
+    "banner_champion_2","frame_champion_2","avatar_champion_2",
+    "unlock_banner_champion_2","unlock_frame_champion_2","unlock_avatar_champion_2",
+    "banner_champion_3","frame_champion_3","avatar_champion_3",
+    "unlock_banner_champion_3","unlock_frame_champion_3","unlock_avatar_champion_3",
+    "banner_champion_4","frame_champion_4","avatar_champion_4",
+    "unlock_banner_champion_4","unlock_frame_champion_4","unlock_avatar_champion_4",
+    "emoji_1","emoji_2","emoji_3","emoji_4",
+    "unlock_street_pass_emoji_5","unlock_street_pass_emoji_6",
+    "unlock_street_pass_emoji_7","unlock_street_pass_emoji_8",
+    "unlock_street_pass_emoji_9","unlock_street_pass_emoji_10",
+    "unlock_street_pass_emoji_ellis_1","unlock_street_pass_emoji_ellis_2",
+    "unlock_street_pass_emoji_ellis_4","unlock_street_pass_emoji_ellis_5",
+    "unlock_street_pass_emoji_ellis_6","unlock_street_pass_emoji_ellis_7",
+    "unlock_street_pass_emoji_ellis_8","unlock_street_pass_emoji_ellis_9",
+    "unlock_street_pass_emoji_ellis_10","unlock_street_pass_emoji_ellis_11",
+    "unlock_street_pass_emoji_ellis_12",
+    "unlock_emoji_Сhampionship_1","unlock_emoji_Сhampionship_2",
+    "unlock_emoji_Сhampionship_3","unlock_emoji_Сhampionship_4",
+    "unlock_emoji_Сhampionship_5"
 ]
 
 def unlock_maps(data):
     gwp = data.setdefault("game_world_parts", {})
     for part in ALL_MAP_PARTS:
-        gwp.setdefault(part, {})["unlocked"] = True
+        gwp[part] = {"unlocked": True}
 
 def unlock_profile(data):
-    car_id = data.get("current_car_id", "1000")
+    cars_items = data.get("cars", {}).get("items", {}) if isinstance(data.get("cars"), dict) else {}
+    available_car_ids = list(cars_items.keys())
+    current_car_id = str(data.get("current_car_id", ""))
+    if current_car_id not in available_car_ids and available_car_ids:
+        current_car_id = available_car_ids[0]
+        data["current_car_id"] = current_car_id
+
     slots = data.setdefault("real_estate_slots", {})
     for i, key in enumerate(["apartment_95_slot_0", "apartment_95_slot_1", "apartment_95_slot_2"]):
         slots.setdefault(key, {})["unlocked"] = True
-        if i == 0:
-            slots[key]["car_id"] = str(car_id)
-    data["car_to_real_estate_slot"] = {"keys": [str(car_id)], "values": ["apartment_95_slot_0"]}
+        if i == 0 and current_car_id:
+            slots[key]["car_id"] = current_car_id
+
+    if current_car_id and current_car_id in available_car_ids:
+        data["car_to_real_estate_slot"] = {"keys": [current_car_id], "values": ["apartment_95_slot_0"]}
+    else:
+        data["car_to_real_estate_slot"] = {}
 
     keys = data.setdefault("shop_owned_packs", {"keys": []}).setdefault("keys", [])
     added = [p for p in NEW_SHOP_PACKS if p not in keys]
     keys.extend(added)
 
+    bp = data.setdefault("battle_pass_event_rewards", {"keys": []}).setdefault("keys", [])
+    for r in BATTLE_PASS_REWARDS:
+        if r not in bp:
+            bp.append(r)
+
     data["emoji"] = {"keys": ["0", "1", "2", "3"], "values": ["emoji_1", "emoji_2", "emoji_3", "emoji_4"]}
+    data["data_version"] = 74
+    data["playerDataVersion"] = 74
+    data["messaging_version"] = 13
+    data["model_upgrade_version"] = 1
 
 def unlock_all_houses(data):
-    re = data.setdefault("real_estates", {})
-    if not re:
-        for k in DEFAULT_REAL_ESTATES:
-            re[k] = {"is_bought": True}
-    else:
-        for key in list(re.keys()):
-            if isinstance(re[key], dict):
-                re[key]["is_bought"] = True
-            else:
-                re[key] = {"is_bought": True}
-        for k in DEFAULT_REAL_ESTATES:
-            if k not in re:
-                re[k] = {"is_bought": True}
+    re = {}
+    for k in OFFICIAL_52_REAL_ESTATES:
+        re[k] = {"is_bought": True}
     data["real_estates"] = re
-    data["data_version"] = max(74, (data.get("data_version", 0) or 0) + 1)
-    data["playerDataVersion"] = max(74, (data.get("playerDataVersion", 0) or 0) + 1)
+    data["data_version"] = 74
+    data["playerDataVersion"] = 74
+
+def clean_rewrite_account(data):
+    unlock_maps(data)
+    unlock_all_houses(data)
+    unlock_profile(data)
+    if "compressed_data" in data:
+        del data["compressed_data"]
+    return data
 
 def unlock_maps_ultimate(profile):
-    unlock_maps(profile)
-    unlock_profile(profile)
-    unlock_all_houses(profile)
-    return profile
+    return clean_rewrite_account(profile)
 
 # ============================================================
 # BOT UI KEYBOARDS
