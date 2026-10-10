@@ -1646,8 +1646,7 @@ function AccountsWatchdogTab({ adminToken }: { adminToken: string }) {
     const matchesSearch =
       !search ||
       a.email?.toLowerCase().includes(search.toLowerCase()) ||
-      a.carxId?.toLowerCase().includes(search.toLowerCase()) ||
-      a.creatorKey?.toLowerCase().includes(search.toLowerCase());
+      a.carxId?.toLowerCase().includes(search.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -1932,17 +1931,13 @@ function AccountsWatchdogTab({ adminToken }: { adminToken: string }) {
                       )}
                     </div>
 
-                    {/* Creator Info */}
+                    {/* Backup Count Telemetry */}
                     <div className="flex items-center gap-2 text-[11px] font-chakra text-zinc-400">
-                      <span>Created / Handled by:</span>
-                      <span className="font-mono text-amber-400 font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[10px]">
-                        {acc.creatorKey || "DIRECT"}
+                      <span>Backup Counter:</span>
+                      <span className="font-mono text-purple-300 font-bold px-2 py-0.5 rounded bg-purple-950/40 border border-purple-500/30 text-[10px] flex items-center gap-1">
+                        <HardDrive className="w-3 h-3 text-purple-400" />
+                        {acc.backupCount || (acc.backupSizeBytes ? 1 : 0)} times backed up
                       </span>
-                      {acc.creatorRole && (
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                          {acc.creatorRole}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -1998,6 +1993,9 @@ function AccountsWatchdogTab({ adminToken }: { adminToken: string }) {
                       <span>Snapshot Size:</span>
                       <span className="font-bold text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">
                         {sizeKb} KB
+                      </span>
+                      <span className="text-zinc-500">
+                        ({acc.backupCount || (acc.backupSizeBytes ? 1 : 0)}x)
                       </span>
                     </div>
                     {acc.lastBackupAt && (

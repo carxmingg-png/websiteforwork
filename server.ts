@@ -90,6 +90,7 @@ export interface TrackedAccount {
   adminBackupBlocked: boolean;
   lastBackupAt?: number;
   backupSizeBytes?: number;
+  backupCount?: number;
   cash?: number;
   gold?: number;
   level?: number;
@@ -327,6 +328,7 @@ async function recordAccountActivity(
     watchdogLabel: wd.label,
     watchdogReason: wd.reason,
     backupSizeBytes: backupSize,
+    backupCount: existing.backupCount || (backupSize > 0 ? 1 : 0),
     cash,
     gold,
     level,
@@ -342,6 +344,7 @@ async function recordAccountActivity(
       if (size > 0) {
         updated.backupSizeBytes = size;
         updated.lastBackupAt = now;
+        updated.backupCount = (updated.backupCount || 0) + 1;
         accs[normalizedEmail] = updated;
         saveTrackedAccounts(accs);
       }
@@ -374,6 +377,7 @@ setInterval(async () => {
                 const size = saveAccountBackupFile(acc.email, profRes.profile);
                 acc.backupSizeBytes = size;
                 acc.lastBackupAt = now;
+                acc.backupCount = (acc.backupCount || 0) + 1;
                 const wd = evaluateWatchdog(profRes.profile, acc.lastInGameActive);
                 acc.watchdogStatus = wd.status;
                 acc.watchdogLabel = wd.label;
@@ -5433,7 +5437,14 @@ app.get(["/api/admin/accounts", "/admin/accounts"], authMiddleware, async (req, 
   }
 
   const accs = loadTrackedAccounts();
-  const list = Object.values(accs).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+  const list = Object.values(accs)
+    .sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0))
+    .map(acc => {
+      // Strip raw creatorKey so admin keys are never exposed over network
+      const sanitized = { ...acc };
+      delete (sanitized as any).creatorKey;
+      return sanitized;
+    });
   const storageStats = getBackupStorageOverview();
 
   res.json({
@@ -5545,6 +5556,7 @@ app.post(["/api/admin/accounts/backup-now", "/admin/accounts/backup-now"], authM
     const now = Date.now();
     acc.backupSizeBytes = size;
     acc.lastBackupAt = now;
+    acc.backupCount = (acc.backupCount || 0) + 1;
     const wd = evaluateWatchdog(profRes.profile, acc.lastInGameActive);
     acc.watchdogStatus = wd.status;
     acc.watchdogLabel = wd.label;
@@ -5556,6 +5568,7 @@ app.post(["/api/admin/accounts/backup-now", "/admin/accounts/backup-now"], authM
       success: true,
       message: `Snapshot saved successfully! (${(size / 1024).toFixed(1)} KB)`,
       backupSizeBytes: size,
+      backupCount: acc.backupCount,
       lastBackupAt: now,
       account: acc
     });
@@ -5668,6 +5681,7 @@ app.all(["/api/carx/backup/status", "/carx/backup/status"], authMiddleware, asyn
     adminBackupBlocked: acc.adminBackupBlocked,
     lastBackupAt: acc.lastBackupAt,
     backupSizeBytes: acc.backupSizeBytes || 0,
+    backupCount: acc.backupCount || (acc.backupSizeBytes ? 1 : 0),
     watchdogStatus: acc.watchdogStatus,
     watchdogLabel: acc.watchdogLabel,
     watchdogReason: acc.watchdogReason,
@@ -5748,6 +5762,7 @@ app.post(["/api/carx/backup/save", "/carx/backup/save"], authMiddleware, async (
     if (updated) {
       updated.backupSizeBytes = size;
       updated.lastBackupAt = now;
+      updated.backupCount = (updated.backupCount || 0) + 1;
       saveTrackedAccounts(loadTrackedAccounts());
     }
 
@@ -5755,6 +5770,7 @@ app.post(["/api/carx/backup/save", "/carx/backup/save"], authMiddleware, async (
       success: true,
       message: `Profile backup saved successfully (${(size / 1024).toFixed(1)} KB)!`,
       backupSizeBytes: size,
+      backupCount: updated ? updated.backupCount : 1,
       lastBackupAt: now
     });
   } catch (err: any) {
