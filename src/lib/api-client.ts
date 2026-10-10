@@ -74,6 +74,8 @@ export function setUnauthorizedHandler(_fn: any) {}
 export function getListKeysQueryKey() { return ["/api/admin/keys"]; }
 export function getGetStringsQueryKey() { return ["/api/admin/strings"]; }
 export function getGetCarsQueryKey() { return ["/api/cars"]; }
+export function getGetAdminAccountsQueryKey() { return ["/api/admin/accounts"]; }
+export function getGetAccountBackupStatusQueryKey(email?: string) { return ["/api/carx/backup/status", email || ""]; }
 
 export function useVerifyKey(options?: any) {
   return useMutation({
@@ -324,3 +326,96 @@ export function useUpdateStrings(options?: any) {
     ...(options?.mutation || {}),
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🛡️ ADMIN ACCOUNTS MONITOR & WATCHDOG HOOKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useGetAdminAccounts(params?: { adminToken?: string }, options?: any) {
+  const token = params?.adminToken || "";
+  return useQuery({
+    queryKey: [...getGetAdminAccountsQueryKey(), token],
+    queryFn: () => fetchApi(`/api/admin/accounts?adminToken=${encodeURIComponent(token)}`),
+    ...(options?.query || {}),
+  });
+}
+
+export function useToggleAdminBackupBlock(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; blocked?: boolean; adminToken?: string } }) =>
+      fetchApi("/api/admin/accounts/toggle-block", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useToggleAdminAccountBackup(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; enabled?: boolean; adminToken?: string } }) =>
+      fetchApi("/api/admin/accounts/toggle-backup", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useAdminBackupNow(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; adminToken?: string } }) =>
+      fetchApi("/api/admin/accounts/backup-now", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useAdminRestoreBackup(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; adminToken?: string } }) =>
+      fetchApi("/api/admin/accounts/restore", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useAdminDeleteAccount(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; adminToken?: string } }) =>
+      fetchApi("/api/admin/accounts/delete", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 👤 USER OPTIONAL BACKUP HOOKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useGetAccountBackupStatus(params: { email?: string; userToken?: string }, options?: any) {
+  const email = params.email || "";
+  const token = params.userToken || "";
+  return useQuery({
+    queryKey: [...getGetAccountBackupStatusQueryKey(email), token],
+    queryFn: () => fetchApi(`/api/carx/backup/status?email=${encodeURIComponent(email)}&userToken=${encodeURIComponent(token)}`),
+    enabled: Boolean(email),
+    ...(options?.query || {}),
+  });
+}
+
+export function useToggleUserBackup(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; enabled: boolean; userToken?: string } }) =>
+      fetchApi("/api/carx/backup/toggle", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useUserBackupNow(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; token?: string; userId?: string; deviceId?: string; uniqueId?: string; userToken?: string } }) =>
+      fetchApi("/api/carx/backup/save", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+
+export function useUserRestoreBackup(options?: any) {
+  return useMutation({
+    mutationFn: (vars: { data: { email: string; password?: string; token?: string; userId?: string; deviceId?: string; uniqueId?: string; userToken?: string } }) =>
+      fetchApi("/api/carx/backup/restore", { method: "POST", body: JSON.stringify(vars.data) }),
+    ...(options?.mutation || {}),
+  });
+}
+

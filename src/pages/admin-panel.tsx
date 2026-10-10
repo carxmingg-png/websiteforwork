@@ -8,6 +8,13 @@ import {
   useGetStrings,
   useUpdateStrings,
   getListKeysQueryKey,
+  useGetAdminAccounts,
+  useToggleAdminBackupBlock,
+  useToggleAdminAccountBackup,
+  useAdminBackupNow,
+  useAdminRestoreBackup,
+  useAdminDeleteAccount,
+  getGetAdminAccountsQueryKey,
 } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -18,7 +25,8 @@ import { EditKeyModal } from "@/components/EditKeyModal";
 import {
   Key, Plus, Trash2, LogOut, Car, Copy, Check,
   Upload, RefreshCw, Clock, Infinity, Calendar, ChevronDown, ChevronUp, Search, Zap,
-  Download, Code, Eye, Sparkles, Database, Layers, CheckCircle2, Sliders, Flame, Edit3, Save, RotateCcw, X, FileText
+  Download, Code, Eye, EyeOff, Sparkles, Database, Layers, CheckCircle2, Sliders, Flame, Edit3, Save, RotateCcw, X, FileText,
+  Shield, ShieldCheck, ShieldAlert, Activity, HardDrive, Lock, Unlock, AlertTriangle, AlertCircle, User, Mail
 } from "lucide-react";
 
 const TABS = [
@@ -26,6 +34,7 @@ const TABS = [
   { id: "extractor", label: "Acc JSON Extractor", icon: Sparkles },
   { id: "injector", label: "Account Injector", icon: Zap },
   { id: "keys", label: "Keys Vault", icon: Key },
+  { id: "watchdog", label: "Accounts & Watchdog", icon: Activity },
 ];
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -1602,6 +1611,465 @@ function CarsTab({ adminToken }: { adminToken: string }) {
   );
 }
 
+function AccountsWatchdogTab({ adminToken }: { adminToken: string }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const accountsQuery = useGetAdminAccounts({ adminToken });
+  const toggleBlockMutation = useToggleAdminBackupBlock();
+  const toggleBackupMutation = useToggleAdminAccountBackup();
+  const backupNowMutation = useAdminBackupNow();
+  const restoreMutation = useAdminRestoreBackup();
+  const deleteMutation = useAdminDeleteAccount();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+
+  const accounts: any[] = accountsQuery.data?.accounts || [];
+  const storageStats = accountsQuery.data?.storageStats || {
+    totalFiles: 0,
+    totalSizeBytes: 0,
+    totalSizeFormatted: "0 KB",
+  };
+
+  const togglePasswordReveal = (email: string) => {
+    setRevealedPasswords((prev) => ({ ...prev, [email]: !prev[email] }));
+  };
+
+  const activeCount = accounts.filter((a) => a.watchdogStatus === "active").length;
+  const recentCount = accounts.filter((a) => a.watchdogStatus === "recent").length;
+  const dormantCount = accounts.filter((a) => a.watchdogStatus === "dormant").length;
+  const backupActiveCount = accounts.filter((a) => a.backupEnabled && !a.adminBackupBlocked).length;
+  const adminBlockedCount = accounts.filter((a) => a.adminBackupBlocked).length;
+
+  const filtered = accounts.filter((a) => {
+    const matchesSearch =
+      !search ||
+      a.email?.toLowerCase().includes(search.toLowerCase()) ||
+      a.carxId?.toLowerCase().includes(search.toLowerCase()) ||
+      a.creatorKey?.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (statusFilter === "active") return a.watchdogStatus === "active";
+    if (statusFilter === "recent") return a.watchdogStatus === "recent";
+    if (statusFilter === "dormant") return a.watchdogStatus === "dormant";
+    if (statusFilter === "backup_active") return a.backupEnabled && !a.adminBackupBlocked;
+    if (statusFilter === "admin_blocked") return a.adminBackupBlocked;
+    return true;
+  });
+
+  const handleToggleBlock = (email: string, currentBlocked: boolean) => {
+    toggleBlockMutation.mutate(
+      { data: { email, blocked: !currentBlocked, adminToken } },
+      {
+        onSuccess: (res: any) => {
+          toast({
+            title: !currentBlocked ? "Backup Shut Off 🔒" : "Backup Unlocked 🔓",
+            description: res.message || "Admin override updated.",
+          });
+          qc.invalidateQueries({ queryKey: getGetAdminAccountsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Action Failed",
+            description: err?.response?.data?.message || "Failed to update backup block status.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleToggleBackup = (email: string, currentEnabled: boolean) => {
+    toggleBackupMutation.mutate(
+      { data: { email, enabled: !currentEnabled, adminToken } },
+      {
+        onSuccess: (res: any) => {
+          toast({
+            title: !currentEnabled ? "Backup Enabled 🛡️" : "Backup Disabled",
+            description: res.message || "Account backup status updated.",
+          });
+          qc.invalidateQueries({ queryKey: getGetAdminAccountsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Action Failed",
+            description: err?.response?.data?.message || "Failed to update backup.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleBackupNow = (email: string) => {
+    backupNowMutation.mutate(
+      { data: { email, adminToken } },
+      {
+        onSuccess: (res: any) => {
+          toast({
+            title: "Snapshot Saved 💾",
+            description: res.message || "Account profile backup created.",
+          });
+          qc.invalidateQueries({ queryKey: getGetAdminAccountsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Backup Failed",
+            description: err?.response?.data?.message || "Failed to backup account.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleRestoreBackup = (email: string) => {
+    if (!confirm(`Are you sure you want to restore the latest backup profile for ${email}? This will upload the saved JSON to the CarX server.`)) return;
+
+    restoreMutation.mutate(
+      { data: { email, adminToken } },
+      {
+        onSuccess: (res: any) => {
+          toast({
+            title: "Restore Complete 🚀",
+            description: res.message || "Profile restored to server successfully.",
+          });
+          qc.invalidateQueries({ queryKey: getGetAdminAccountsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Restore Failed",
+            description: err?.response?.data?.message || "Failed to restore backup.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleDelete = (email: string) => {
+    if (!confirm(`Delete tracked account ${email} and remove its backup file?`)) return;
+
+    deleteMutation.mutate(
+      { data: { email, adminToken } },
+      {
+        onSuccess: (res: any) => {
+          toast({
+            title: "Account Deleted",
+            description: res.message || "Account removed from tracker.",
+          });
+          qc.invalidateQueries({ queryKey: getGetAdminAccountsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Delete Failed",
+            description: err?.response?.data?.message || "Failed to delete account.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="cyber-card rounded-2xl p-3.5 border border-amber-500/30 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-zinc-400 uppercase tracking-wider">Total Accounts</div>
+          <div className="text-xl font-black text-amber-400 font-mono mt-0.5">{accounts.length}</div>
+          <div className="text-[9px] font-mono text-zinc-500 mt-0.5">Monitored</div>
+        </div>
+
+        <div className="cyber-card rounded-2xl p-3.5 border border-emerald-500/30 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-emerald-400 uppercase tracking-wider">🟢 Regularly Played</div>
+          <div className="text-xl font-black text-emerald-300 font-mono mt-0.5">{activeCount}</div>
+          <div className="text-[9px] font-mono text-emerald-500/80 mt-0.5">&le; 48h active</div>
+        </div>
+
+        <div className="cyber-card rounded-2xl p-3.5 border border-yellow-500/30 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-yellow-400 uppercase tracking-wider">🟡 Recent Play</div>
+          <div className="text-xl font-black text-yellow-300 font-mono mt-0.5">{recentCount}</div>
+          <div className="text-[9px] font-mono text-yellow-500/80 mt-0.5">&le; 7 days</div>
+        </div>
+
+        <div className="cyber-card rounded-2xl p-3.5 border border-zinc-700/60 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-zinc-400 uppercase tracking-wider">💤 Dormant</div>
+          <div className="text-xl font-black text-zinc-400 font-mono mt-0.5">{dormantCount}</div>
+          <div className="text-[9px] font-mono text-zinc-500 mt-0.5">&gt; 7 days idle</div>
+        </div>
+
+        <div className="cyber-card rounded-2xl p-3.5 border border-cyan-500/30 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-cyan-400 uppercase tracking-wider">🛡️ Backups Active</div>
+          <div className="text-xl font-black text-cyan-300 font-mono mt-0.5">{backupActiveCount}</div>
+          <div className="text-[9px] font-mono text-cyan-500/80 mt-0.5">{adminBlockedCount} admin shut off</div>
+        </div>
+
+        <div className="cyber-card rounded-2xl p-3.5 border border-purple-500/30 bg-black/60 text-center">
+          <div className="text-[10px] font-chakra font-bold text-purple-400 uppercase tracking-wider">💾 Total Storage</div>
+          <div className="text-xl font-black text-purple-300 font-mono mt-0.5">{storageStats.totalSizeFormatted}</div>
+          <div className="text-[9px] font-mono text-purple-500/80 mt-0.5">{storageStats.totalFiles} snapshot files</div>
+        </div>
+      </div>
+
+      {/* Control Bar: Search & Status Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-black/60 border border-zinc-800 rounded-2xl">
+        <div className="flex items-center gap-2 flex-1">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by email, CarX ID, or creator key..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-zinc-900/80 border border-zinc-800 rounded-xl text-xs font-chakra text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="px-2 py-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white text-xs font-mono"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-chakra font-bold text-zinc-300 focus:outline-none focus:border-amber-500/50"
+          >
+            <option value="all">Filter: All Status ({accounts.length})</option>
+            <option value="active">🟢 Active / Regularly Played ({activeCount})</option>
+            <option value="recent">🟡 Recent Gameplay ({recentCount})</option>
+            <option value="dormant">💤 Dormant Accounts ({dormantCount})</option>
+            <option value="backup_active">🛡️ Backup Active ({backupActiveCount})</option>
+            <option value="admin_blocked">🔒 Admin Shut Off ({adminBlockedCount})</option>
+          </select>
+
+          <button
+            onClick={() => accountsQuery.refetch()}
+            disabled={accountsQuery.isFetching}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-chakra font-bold cursor-pointer transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${accountsQuery.isFetching ? "animate-spin text-amber-400" : ""}`} />
+            Sync
+          </button>
+        </div>
+      </div>
+
+      {/* Accounts List */}
+      {accountsQuery.isLoading ? (
+        <div className="py-16 text-center text-zinc-500 font-mono text-sm flex items-center justify-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+          Loading tracked accounts and watchdog telemetry...
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center text-zinc-500 font-chakra text-sm border border-zinc-900 rounded-3xl bg-black/40 p-8">
+          <ShieldAlert className="w-10 h-10 text-zinc-600 mx-auto mb-2" />
+          <p className="font-bold text-zinc-400">No accounts found matching filter.</p>
+          <p className="text-xs text-zinc-600 mt-1">Accounts are automatically captured when registered, logged into, or injected.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((acc) => {
+            const isRevealed = !!revealedPasswords[acc.email];
+            const sizeKb = acc.backupSizeBytes ? (acc.backupSizeBytes / 1024).toFixed(1) : "0.0";
+            const isBlocked = !!acc.adminBackupBlocked;
+
+            return (
+              <div
+                key={acc.email}
+                className={`cyber-card rounded-2xl p-4 border transition-all ${
+                  isBlocked
+                    ? "border-red-500/30 bg-red-950/10"
+                    : acc.watchdogStatus === "active"
+                    ? "border-emerald-500/30 bg-black/60"
+                    : acc.watchdogStatus === "recent"
+                    ? "border-yellow-500/30 bg-black/60"
+                    : "border-zinc-800 bg-black/50"
+                }`}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Account Identity & Passwords */}
+                  <div className="space-y-1.5 min-w-[280px]">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-bold text-white select-all">
+                        {acc.email}
+                      </span>
+                      <CopyButton text={acc.email} />
+                      {acc.carxId && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                          ID: {acc.carxId}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Password Reveal and Copy */}
+                    <div className="flex items-center gap-2 text-xs font-mono">
+                      <span className="text-zinc-500 text-[11px]">Pass:</span>
+                      {acc.password ? (
+                        <div className="flex items-center gap-1.5 bg-zinc-900/90 border border-zinc-800 px-2.5 py-0.5 rounded-lg">
+                          <span className="text-amber-300 font-bold tracking-wider select-all">
+                            {isRevealed ? acc.password : "••••••••••••"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordReveal(acc.email)}
+                            className="text-zinc-400 hover:text-white p-0.5 transition-colors cursor-pointer"
+                            title={isRevealed ? "Hide Password" : "Show Password"}
+                          >
+                            {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <CopyButton text={acc.password} />
+                        </div>
+                      ) : (
+                        <span className="text-zinc-600 text-[11px] italic">Not captured</span>
+                      )}
+                    </div>
+
+                    {/* Creator Info */}
+                    <div className="flex items-center gap-2 text-[11px] font-chakra text-zinc-400">
+                      <span>Created / Handled by:</span>
+                      <span className="font-mono text-amber-400 font-bold px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[10px]">
+                        {acc.creatorKey || "DIRECT"}
+                      </span>
+                      {acc.creatorRole && (
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          {acc.creatorRole}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Watchdog Status Telemetry */}
+                  <div className="space-y-1 min-w-[200px]">
+                    <div className="text-[10px] font-chakra font-bold text-zinc-500 uppercase">WATCHDOG TELEMETRY</div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-mono font-bold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${
+                          acc.watchdogStatus === "active"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                            : acc.watchdogStatus === "recent"
+                            ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/40"
+                            : acc.watchdogStatus === "dormant"
+                            ? "bg-zinc-800 text-zinc-400 border-zinc-700"
+                            : "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                        }`}
+                      >
+                        {acc.watchdogLabel || "⚪ UNVERIFIED"}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-chakra text-zinc-400 leading-tight">
+                      {acc.lastInGameActive ? (
+                        <span>Last played: <span className="font-mono text-zinc-300">{acc.lastInGameActive}</span></span>
+                      ) : (
+                        <span className="text-zinc-500 italic">No in-game session detected yet</span>
+                      )}
+                    </div>
+                    {acc.watchdogReason && (
+                      <div className="text-[10px] font-mono text-zinc-500">{acc.watchdogReason}</div>
+                    )}
+                  </div>
+
+                  {/* Backup Status & Storage */}
+                  <div className="space-y-1 min-w-[190px]">
+                    <div className="text-[10px] font-chakra font-bold text-zinc-500 uppercase">BACKUP & STORAGE</div>
+                    <div className="flex items-center gap-2">
+                      {isBlocked ? (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 border border-red-500/40 font-bold uppercase flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-red-400" /> SHUT OFF BY ADMIN
+                        </span>
+                      ) : acc.backupEnabled ? (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" /> BACKUP ACTIVE
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold uppercase">
+                          OPT-IN (DISABLED)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+                      <span>Snapshot Size:</span>
+                      <span className="font-bold text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/30">
+                        {sizeKb} KB
+                      </span>
+                    </div>
+                    {acc.lastBackupAt && (
+                      <div className="text-[10px] font-chakra text-zinc-500">
+                        Last saved: {new Date(acc.lastBackupAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin Controls & Actions */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                    {/* Admin Shut-off Switch */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBlock(acc.email, isBlocked)}
+                      disabled={toggleBlockMutation.isPending}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-chakra font-bold cursor-pointer transition-all ${
+                        isBlocked
+                          ? "bg-red-500/20 hover:bg-emerald-500/20 border-red-500/40 hover:border-emerald-500/40 text-red-300 hover:text-emerald-300"
+                          : "bg-zinc-900 hover:bg-red-500/20 border-zinc-800 hover:border-red-500/40 text-zinc-400 hover:text-red-300"
+                      }`}
+                      title={isBlocked ? "Unlock Backup Feature for Account" : "Shut Off Backup Feature for Account"}
+                    >
+                      {isBlocked ? <Unlock className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-red-400" />}
+                      {isBlocked ? "UNBLOCK BACKUP" : "SHUT OFF BACKUP"}
+                    </button>
+
+                    {/* Backup Now */}
+                    <button
+                      type="button"
+                      onClick={() => handleBackupNow(acc.email)}
+                      disabled={backupNowMutation.isPending || isBlocked || !acc.password}
+                      className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-mono text-[10px] font-bold cursor-pointer transition-all disabled:opacity-40"
+                      title="Save fresh profile snapshot now"
+                    >
+                      <HardDrive className="w-3.5 h-3.5 text-purple-400" />
+                      BACKUP
+                    </button>
+
+                    {/* Restore Backup */}
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreBackup(acc.email)}
+                      disabled={restoreMutation.isPending || !acc.backupSizeBytes || !acc.password}
+                      className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold cursor-pointer transition-all disabled:opacity-40"
+                      title="Restore backup profile to game server"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                      RESTORE
+                    </button>
+
+                    {/* Delete Tracked Account */}
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(acc.email)}
+                      disabled={deleteMutation.isPending}
+                      className="flex items-center justify-center p-1.5 rounded-xl bg-red-950/20 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white cursor-pointer transition-all"
+                      title="Delete account from tracker"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { token, clearAuth } = useAuth();
   const [tab, setTab] = useState("cars");
@@ -1643,13 +2111,13 @@ export default function AdminPanel() {
           </button>
         </div>
 
-        <div className="flex gap-2 p-1.5 bg-black/60 border border-zinc-800 rounded-2xl mb-6">
+        <div className="flex gap-2 p-1.5 bg-black/60 border border-zinc-800 rounded-2xl mb-6 flex-wrap">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               data-testid={`tab-${id}`}
-              className={`flex items-center gap-2 flex-1 justify-center py-3 rounded-xl text-xs font-gaming font-bold tracking-wider transition-all duration-300 cursor-pointer ${
+              className={`flex items-center gap-2 flex-1 min-w-[120px] justify-center py-3 rounded-xl text-xs font-gaming font-bold tracking-wider transition-all duration-300 cursor-pointer ${
                 tab === id
                   ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
@@ -1671,6 +2139,7 @@ export default function AdminPanel() {
           )}
           {tab === "injector" && <InjectSite adminOverrideToken={adminToken} hideHeader />}
           {tab === "keys" && <KeysTab adminToken={adminToken} />}
+          {tab === "watchdog" && <AccountsWatchdogTab adminToken={adminToken} />}
         </div>
       </div>
     </div>

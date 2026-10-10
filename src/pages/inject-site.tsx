@@ -25,15 +25,21 @@ import {
   useGetCars,
   getGetCarsQueryKey,
   useCheckBan,
+  useGetAccountBackupStatus,
+  useToggleUserBackup,
+  useUserBackupNow,
+  useUserRestoreBackup,
+  getGetAccountBackupStatusQueryKey,
 } from "@/lib/api-client";
 import { CurrencyInputPreset, CarsInjectInputMode } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LogOut, DollarSign, Map, Car, Star, Zap, Trophy,
   User, UserPlus, Eye, EyeOff, RefreshCw, CheckCircle2, AlertCircle, Users,
   Trash2, ShieldAlert, ShieldCheck, Copy, Check, Bookmark, Wrench,
-  Sparkles, Disc, Hash, Palette, Layers
+  Sparkles, Disc, Hash, Palette, Layers, HardDrive, RotateCcw, Lock, Activity, Shield
 } from "lucide-react";
 
 interface CarXSession {
@@ -971,6 +977,19 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
 
   const [fleetModalOpen, setFleetModalOpen] = useState(false);
   const [fleetSearch, setFleetSearch] = useState("");
+
+  const qc = useQueryClient();
+  const backupStatusQuery = useGetAccountBackupStatus({ email: session.email, userToken });
+  const toggleBackup = useToggleUserBackup();
+  const backupNow = useUserBackupNow();
+  const restoreBackup = useUserRestoreBackup();
+
+  const backupData = backupStatusQuery.data || {};
+  const isBackupEnabled = !!backupData.backupEnabled;
+  const isBlockedByAdmin = !!backupData.adminBackupBlocked;
+  const backupSizeKb = backupData.backupSizeBytes ? (backupData.backupSizeBytes / 1024).toFixed(1) : "0.0";
+  const watchdogStatus = backupData.watchdogStatus || "unverified";
+  const watchdogLabel = backupData.watchdogLabel || "⚪ UNVERIFIED";
 
   const deleteAcc = useDeleteCarX({
     mutation: {
@@ -2026,6 +2045,217 @@ function InjectionPanel({ session, userToken, onDisconnect }: { session: CarXSes
             </button>
           </div>
         )}
+      </div>
+
+      {/* Account Watchdog & Optional Rolling Backup Card */}
+      <div className={`cyber-card rounded-3xl p-5 border transition-all ${
+        isBlockedByAdmin
+          ? "border-red-500/40 bg-red-950/20"
+          : isBackupEnabled
+          ? "border-emerald-500/40 bg-emerald-950/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+          : "border-zinc-800 bg-black/60"
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm ${
+              isBlockedByAdmin
+                ? "bg-red-500/20 border-red-500/40 text-red-400"
+                : isBackupEnabled
+                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                : "bg-purple-500/20 border-purple-500/40 text-purple-400"
+            }`}>
+              {isBlockedByAdmin ? <Lock className="w-5 h-5" /> : <HardDrive className="w-5 h-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs font-gaming font-black text-white tracking-wider uppercase">
+                  ACCOUNT WATCHDOG & ROLLING BACKUP
+                </h3>
+                {isBlockedByAdmin ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/40 font-bold uppercase flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-red-400" /> LOCKED BY ADMIN
+                  </span>
+                ) : isBackupEnabled ? (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold uppercase flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> AUTO-BACKUP ACTIVE
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold uppercase">
+                    OPT-IN (DISABLED)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-chakra text-zinc-400 mt-0.5">
+                Overwrites previous snapshot on each save (~35 KB per account, zero bloat)
+              </p>
+            </div>
+          </div>
+
+          {/* Watchdog Status Badge */}
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <div className="text-left sm:text-right">
+              <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">WATCHDOG STATUS</div>
+              <div className={`text-xs font-mono font-bold mt-0.5 ${
+                watchdogStatus === "active"
+                  ? "text-emerald-400"
+                  : watchdogStatus === "recent"
+                  ? "text-yellow-400"
+                  : watchdogStatus === "dormant"
+                  ? "text-zinc-400"
+                  : "text-blue-400"
+              }`}>
+                {watchdogLabel}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-chakra text-zinc-300">
+              <span>Backup Storage:</span>
+              <span className="font-mono font-bold text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded-md border border-purple-500/30">
+                {backupSizeKb} KB
+              </span>
+              {backupData.lastBackupAt && (
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  (Last: {new Date(backupData.lastBackupAt).toLocaleTimeString()})
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] font-chakra text-zinc-400">
+              {backupData.lastInGameActive ? (
+                <span>Last in-game activity: <span className="font-mono text-zinc-300">{backupData.lastInGameActive}</span></span>
+              ) : (
+                <span className="text-zinc-500 italic">No in-game session detected yet</span>
+              )}
+            </div>
+            {isBlockedByAdmin && (
+              <div className="text-[11px] font-chakra text-red-400 flex items-center gap-1 font-bold">
+                <AlertCircle className="w-3.5 h-3.5" /> Administrator has shut off the backup feature for this account.
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Optional Toggle Button */}
+            <button
+              type="button"
+              disabled={isBlockedByAdmin || toggleBackup.isPending}
+              onClick={() => {
+                toggleBackup.mutate(
+                  { data: { email: session.email, enabled: !isBackupEnabled, userToken } },
+                  {
+                    onSuccess: (res: any) => {
+                      toast({
+                        title: !isBackupEnabled ? "Auto-Backup Enabled 🛡️" : "Auto-Backup Disabled",
+                        description: res.message || "Setting updated.",
+                      });
+                      qc.invalidateQueries({ queryKey: getGetAccountBackupStatusQueryKey(session.email) });
+                    },
+                    onError: (err: any) => {
+                      toast({
+                        title: "Toggle Failed",
+                        description: err?.response?.data?.message || "Failed to update backup setting.",
+                        variant: "destructive",
+                      });
+                    },
+                  }
+                );
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-chakra font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                isBlockedByAdmin
+                  ? "bg-zinc-900 border-zinc-800 text-zinc-600"
+                  : isBackupEnabled
+                  ? "bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/40 text-emerald-300"
+                  : "bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-300"
+              }`}
+            >
+              {toggleBackup.isPending ? "Updating..." : isBackupEnabled ? "✓ Auto-Backup: ON" : "Enable Auto-Backup (Optional)"}
+            </button>
+
+            {/* Instant Backup Now */}
+            <button
+              type="button"
+              disabled={isBlockedByAdmin || backupNow.isPending}
+              onClick={() => {
+                backupNow.mutate(
+                  {
+                    data: {
+                      email: session.email,
+                      token: session.token,
+                      userId: session.carxId,
+                      deviceId: session.deviceId,
+                      uniqueId: session.uniqueId,
+                      userToken
+                    }
+                  },
+                  {
+                    onSuccess: (res: any) => {
+                      toast({
+                        title: "Backup Saved! 💾",
+                        description: res.message || "Profile snapshot saved successfully.",
+                      });
+                      qc.invalidateQueries({ queryKey: getGetAccountBackupStatusQueryKey(session.email) });
+                    },
+                    onError: (err: any) => {
+                      toast({
+                        title: "Backup Failed",
+                        description: err?.response?.data?.message || "Failed to snapshot profile.",
+                        variant: "destructive",
+                      });
+                    },
+                  }
+                );
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 text-xs font-chakra font-bold cursor-pointer transition-all disabled:opacity-40"
+            >
+              <HardDrive className={`w-3.5 h-3.5 ${backupNow.isPending ? "animate-pulse" : ""}`} />
+              {backupNow.isPending ? "Saving..." : "Backup Now"}
+            </button>
+
+            {/* Restore Backup */}
+            <button
+              type="button"
+              disabled={restoreBackup.isPending || !backupData.backupSizeBytes}
+              onClick={() => {
+                if (!window.confirm(`Restore the latest saved backup snapshot for ${session.email}?\nThis will overwrite the server save with your clean snapshot.`)) return;
+                restoreBackup.mutate(
+                  {
+                    data: {
+                      email: session.email,
+                      token: session.token,
+                      userId: session.carxId,
+                      deviceId: session.deviceId,
+                      uniqueId: session.uniqueId,
+                      userToken
+                    }
+                  },
+                  {
+                    onSuccess: (res: any) => {
+                      toast({
+                        title: "Restore Complete! 🚀",
+                        description: res.message || "Account profile restored to server.",
+                      });
+                      fetchProfile();
+                    },
+                    onError: (err: any) => {
+                      toast({
+                        title: "Restore Failed",
+                        description: err?.response?.data?.message || "Failed to restore backup snapshot.",
+                        variant: "destructive",
+                      });
+                    },
+                  }
+                );
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-chakra font-bold cursor-pointer transition-all disabled:opacity-40"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${restoreBackup.isPending ? "animate-spin" : ""}`} />
+              {restoreBackup.isPending ? "Restoring..." : "Restore Backup"}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

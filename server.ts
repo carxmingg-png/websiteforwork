@@ -63,6 +63,337 @@ function saveSavedCredentials(data: any) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🛡️ WATCHDOG & ROLLING BACKUP SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+const ACCOUNTS_FILE = path.join(process.cwd(), "accounts.json");
+const BACKUPS_DIR = path.join(process.cwd(), "backups");
+if (!fs.existsSync(BACKUPS_DIR)) {
+  try { fs.mkdirSync(BACKUPS_DIR, { recursive: true }); } catch {}
+}
+
+export interface TrackedAccount {
+  email: string;
+  password?: string;
+  carxId?: string;
+  creatorKey: string;
+  creatorRole: string;
+  createdAt: number;
+  lastSeenAt: number;
+  lastLoginAt?: number;
+  lastInGameActive?: string;
+  lastRaceTimestamp?: number;
+  watchdogStatus: "active" | "recent" | "dormant" | "unverified";
+  watchdogLabel: string;
+  watchdogReason: string;
+  backupEnabled: boolean;
+  adminBackupBlocked: boolean;
+  lastBackupAt?: number;
+  backupSizeBytes?: number;
+  cash?: number;
+  gold?: number;
+  level?: number;
+  carsCount?: number;
+}
+
+function evaluateWatchdog(profile: any, fallbackDate?: string): {
+  status: "active" | "recent" | "dormant" | "unverified";
+  label: string;
+  reason: string;
+  lastInGameActive?: string;
+  lastRaceTimestamp?: number;
+} {
+  let inGameDateStr = profile?.date_time || profile?.stats?.lastUpdated || fallbackDate;
+  let maxRaceTs = 0;
+
+  if (profile?.races_ts) {
+    if (Array.isArray(profile.races_ts)) {
+      maxRaceTs = Math.max(0, ...profile.races_ts.filter(Boolean).map((n: any) => Number(n) || 0));
+    } else if (typeof profile.races_ts === "object") {
+      const vals = Object.values(profile.races_ts).map((n: any) => Number(n) || 0);
+      maxRaceTs = Math.max(0, ...vals);
+    }
+  }
+
+  let latestTimeMs: number | null = null;
+  if (inGameDateStr && typeof inGameDateStr === "string") {
+    const parsed = Date.parse(inGameDateStr.replace(" ", "T") + "Z") || Date.parse(inGameDateStr);
+    if (!isNaN(parsed) && parsed > 0) {
+      latestTimeMs = parsed;
+    }
+  }
+
+  if (maxRaceTs > 0) {
+    const tsMs = maxRaceTs < 1e11 ? maxRaceTs * 1000 : maxRaceTs;
+    if (!latestTimeMs || tsMs > latestTimeMs) {
+      latestTimeMs = tsMs;
+      inGameDateStr = new Date(tsMs).toISOString().replace("T", " ").substring(0, 19);
+    }
+  }
+
+  if (!latestTimeMs) {
+    return {
+      status: "unverified",
+      label: "⚪ NEW / NEVER OPENED IN-GAME",
+      reason: "Account profile has not been loaded in-game yet.",
+      lastInGameActive: undefined,
+      lastRaceTimestamp: maxRaceTs || undefined
+    };
+  }
+
+  const now = Date.now();
+  const diffHours = (now - latestTimeMs) / (1000 * 60 * 60);
+  const diffDays = diffHours / 24;
+
+  if (diffHours <= 48) {
+    return {
+      status: "active",
+      label: "🟢 ACTIVE (Regularly Played)",
+      reason: `Regular gameplay detected (Active ${Math.max(1, Math.round(diffHours))}h ago).`,
+      lastInGameActive: inGameDateStr,
+      lastRaceTimestamp: maxRaceTs || undefined
+    };
+  } else if (diffDays <= 7) {
+    return {
+      status: "recent",
+      label: "🟡 RECENT (Played This Week)",
+      reason: `Played ${Math.round(diffDays)} day(s) ago.`,
+      lastInGameActive: inGameDateStr,
+      lastRaceTimestamp: maxRaceTs || undefined
+    };
+  } else {
+    return {
+      status: "dormant",
+      label: "💤 DORMANT (Inactive)",
+      reason: `No gameplay for ${Math.round(diffDays)} days.`,
+      lastInGameActive: inGameDateStr,
+      lastRaceTimestamp: maxRaceTs || undefined
+    };
+  }
+}
+
+function getSafeBackupFilename(email: string) {
+  const clean = email.toLowerCase().replace(/[^a-z0-9@._-]/g, "_");
+  return `${clean}.json.gz`;
+}
+
+function getAccountBackupPath(email: string) {
+  return path.join(BACKUPS_DIR, getSafeBackupFilename(email));
+}
+
+function saveAccountBackupFile(email: string, profile: any) {
+  try {
+    const backupPath = getAccountBackupPath(email);
+    if (!fs.existsSync(BACKUPS_DIR)) {
+      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    }
+    const jsonStr = JSON.stringify(profile);
+    const compressed = zlib.gzipSync(Buffer.from(jsonStr, "utf-8"), { level: 9 });
+    fs.writeFileSync(backupPath, compressed);
+    return compressed.length;
+  } catch (err) {
+    console.error(`[BACKUP ERROR] Failed to save backup for ${email}:`, err);
+    return 0;
+  }
+}
+
+function loadAccountBackupFile(email: string): any | null {
+  try {
+    const backupPath = getAccountBackupPath(email);
+    if (!fs.existsSync(backupPath)) return null;
+    const buf = fs.readFileSync(backupPath);
+    const decompressed = zlib.gunzipSync(buf);
+    return JSON.parse(decompressed.toString("utf-8"));
+  } catch (err) {
+    console.error(`[BACKUP ERROR] Failed to load backup for ${email}:`, err);
+    return null;
+  }
+}
+
+function deleteAccountBackupFile(email: string) {
+  try {
+    const backupPath = getAccountBackupPath(email);
+    if (fs.existsSync(backupPath)) {
+      fs.unlinkSync(backupPath);
+    }
+  } catch {}
+}
+
+function getBackupStorageOverview() {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) return { totalFiles: 0, totalSizeBytes: 0, totalSizeFormatted: "0 KB" };
+    const files = fs.readdirSync(BACKUPS_DIR).filter(f => f.endsWith(".json.gz"));
+    let totalBytes = 0;
+    for (const f of files) {
+      try {
+        const s = fs.statSync(path.join(BACKUPS_DIR, f));
+        totalBytes += s.size;
+      } catch {}
+    }
+    let formatted = `${(totalBytes / 1024).toFixed(1)} KB`;
+    if (totalBytes >= 1024 * 1024) {
+      formatted = `${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    return {
+      totalFiles: files.length,
+      totalSizeBytes: totalBytes,
+      totalSizeFormatted: formatted
+    };
+  } catch {
+    return { totalFiles: 0, totalSizeBytes: 0, totalSizeFormatted: "0 KB" };
+  }
+}
+
+function loadTrackedAccounts(): Record<string, TrackedAccount> {
+  let accs: Record<string, TrackedAccount> = {};
+  if (fs.existsSync(ACCOUNTS_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, "utf-8"));
+      accs = data.accounts || data || {};
+    } catch {}
+  }
+  return accs;
+}
+
+function saveTrackedAccounts(accs: Record<string, TrackedAccount>) {
+  try {
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify({ accounts: accs, updated_at: new Date().toISOString() }, null, 2), "utf-8");
+  } catch (e) {
+    console.error("[ACCOUNTS TRACKER] Error saving accounts.json:", e);
+  }
+}
+
+async function recordAccountActivity(
+  email: string,
+  password?: string,
+  carxId?: string,
+  creatorKey: string = "ADMIN",
+  creatorRole: string = "admin",
+  profile?: any
+) {
+  if (!email) return;
+  const normalizedEmail = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const existing = accs[normalizedEmail] || {
+    email: normalizedEmail,
+    createdAt: Date.now(),
+    backupEnabled: false,
+    adminBackupBlocked: false
+  };
+
+  const now = Date.now();
+  const wd = evaluateWatchdog(profile, existing.lastInGameActive);
+
+  let backupSize = existing.backupSizeBytes || 0;
+  const backupPath = getAccountBackupPath(normalizedEmail);
+  if (fs.existsSync(backupPath)) {
+    try { backupSize = fs.statSync(backupPath).size; } catch {}
+  }
+
+  let cash = existing.cash;
+  let gold = existing.gold;
+  let level = existing.level;
+  let carsCount = existing.carsCount;
+
+  if (profile) {
+    if (profile.stats) {
+      cash = profile.stats.cash ?? cash;
+      gold = profile.stats.gold ?? gold;
+      level = profile.stats.level ?? level;
+      carsCount = profile.stats.cars ?? profile.stats.cars_count ?? carsCount;
+    } else {
+      if (profile.resources?.soft !== undefined) cash = profile.resources.soft?.amount ?? profile.resources.soft;
+      if (profile.resources?.hard !== undefined) gold = profile.resources.hard?.amount ?? profile.resources.hard;
+      if (profile.resources?.experience !== undefined) level = profile.resources.experience?.award_index ?? profile.resources.experience?.level ?? level;
+      if (profile.cars) {
+        const items = profile.cars.items || profile.cars;
+        carsCount = typeof items === "object" ? Object.keys(items).length : carsCount;
+      }
+    }
+  }
+
+  const updated: TrackedAccount = {
+    ...existing,
+    email: normalizedEmail,
+    password: password || existing.password || getSavedCredentials().saved_passwords?.[normalizedEmail] || undefined,
+    carxId: carxId || existing.carxId,
+    creatorKey: existing.creatorKey || creatorKey || "DIRECT",
+    creatorRole: existing.creatorRole || creatorRole || "user",
+    lastSeenAt: now,
+    lastLoginAt: password ? now : existing.lastLoginAt,
+    lastInGameActive: wd.lastInGameActive || existing.lastInGameActive,
+    lastRaceTimestamp: wd.lastRaceTimestamp || existing.lastRaceTimestamp,
+    watchdogStatus: wd.status,
+    watchdogLabel: wd.label,
+    watchdogReason: wd.reason,
+    backupSizeBytes: backupSize,
+    cash,
+    gold,
+    level,
+    carsCount
+  };
+
+  accs[normalizedEmail] = updated;
+  saveTrackedAccounts(accs);
+
+  if (updated.backupEnabled && !updated.adminBackupBlocked && profile) {
+    try {
+      const size = saveAccountBackupFile(normalizedEmail, profile);
+      if (size > 0) {
+        updated.backupSizeBytes = size;
+        updated.lastBackupAt = now;
+        accs[normalizedEmail] = updated;
+        saveTrackedAccounts(accs);
+      }
+    } catch {}
+  }
+
+  if (password) {
+    saveSavedCredentials({ email: normalizedEmail, password });
+  }
+
+  return updated;
+}
+
+// 🛡️ Watchdog & Optional Rolling Auto-Backup runner (every 60 seconds)
+setInterval(async () => {
+  try {
+    const accs = loadTrackedAccounts();
+    const emails = Object.keys(accs);
+    for (const email of emails) {
+      const acc = accs[email];
+      if (acc.backupEnabled && !acc.adminBackupBlocked && acc.password) {
+        const now = Date.now();
+        // Run rolling backup every 5 minutes if account is actively configured
+        if (!acc.lastBackupAt || (now - acc.lastBackupAt) >= 5 * 60 * 1000) {
+          try {
+            const loginRes = await CarXClient.authenticate("login", acc.email, acc.password);
+            if (loginRes.success && loginRes.token) {
+              const profRes = await CarXClient.getProfile(loginRes.token, loginRes.userId);
+              if (profRes && profRes.profile) {
+                const size = saveAccountBackupFile(acc.email, profRes.profile);
+                acc.backupSizeBytes = size;
+                acc.lastBackupAt = now;
+                const wd = evaluateWatchdog(profRes.profile, acc.lastInGameActive);
+                acc.watchdogStatus = wd.status;
+                acc.watchdogLabel = wd.label;
+                acc.watchdogReason = wd.reason;
+                acc.lastInGameActive = wd.lastInGameActive || acc.lastInGameActive;
+                saveTrackedAccounts(accs);
+              }
+            }
+          } catch (e: any) {
+            // Silently skip if network or rate limited
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[AUTO-BACKUP RUNNER ERROR]", err);
+  }
+}, 60000);
+
+
 function getKeysFilePath() {
   if (process.env.KEYS_FILE_PATH) {
     return process.env.KEYS_FILE_PATH;
@@ -5090,6 +5421,394 @@ app.post(["/api/admin/bulk-delete-keys", "/admin/bulk-delete-keys"], authMiddlew
   res.json({ success: true, message: `Successfully deleted ${deletedCount} keys.` });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 👑 ADMIN: ACCOUNTS WATCHDOG & ROLLING BACKUP MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Get all tracked accounts with watchdog status, credentials, and storage metrics
+app.get(["/api/admin/accounts", "/admin/accounts"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const accs = loadTrackedAccounts();
+  const list = Object.values(accs).sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+  const storageStats = getBackupStorageOverview();
+
+  res.json({
+    success: true,
+    accounts: list,
+    totalAccounts: list.length,
+    storageStats
+  });
+});
+
+// Admin toggle: Shut off / unblock backup feature for an account
+app.post(["/api/admin/accounts/toggle-block", "/admin/accounts/toggle-block"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const { email, blocked } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  if (!acc) {
+    return res.status(404).json({ success: false, message: "Tracked account not found." });
+  }
+
+  acc.adminBackupBlocked = blocked !== undefined ? !!blocked : !acc.adminBackupBlocked;
+  if (acc.adminBackupBlocked) {
+    acc.backupEnabled = false; // Immediately disable backup if blocked
+  }
+  saveTrackedAccounts(accs);
+
+  res.json({
+    success: true,
+    message: acc.adminBackupBlocked
+      ? `Backup feature SHUT OFF for ${normalized}.`
+      : `Backup feature ALLOWED for ${normalized}.`,
+    account: acc
+  });
+});
+
+// Admin toggle: Turn backup on / off directly for an account
+app.post(["/api/admin/accounts/toggle-backup", "/admin/accounts/toggle-backup"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const { email, enabled } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  if (!acc) {
+    return res.status(404).json({ success: false, message: "Tracked account not found." });
+  }
+
+  if (acc.adminBackupBlocked && enabled) {
+    return res.status(400).json({ success: false, message: "Cannot enable backup: Admin has blocked this account." });
+  }
+
+  acc.backupEnabled = enabled !== undefined ? !!enabled : !acc.backupEnabled;
+  saveTrackedAccounts(accs);
+
+  res.json({
+    success: true,
+    message: acc.backupEnabled ? `Backup enabled for ${normalized}.` : `Backup disabled for ${normalized}.`,
+    account: acc
+  });
+});
+
+// Admin action: Backup account now
+app.post(["/api/admin/accounts/backup-now", "/admin/accounts/backup-now"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  if (!acc || !acc.password) {
+    return res.status(400).json({ success: false, message: "Account credentials not found to execute backup." });
+  }
+
+  try {
+    const loginRes = await CarXClient.authenticate("login", acc.email, acc.password);
+    if (!loginRes.success || !loginRes.token) {
+      return res.status(400).json({ success: false, message: loginRes.message || "CarX login failed." });
+    }
+
+    const profRes = await CarXClient.getProfile(loginRes.token, loginRes.userId);
+    if (!profRes || !profRes.profile) {
+      return res.status(400).json({ success: false, message: "Failed to fetch profile snapshot from CarX server." });
+    }
+
+    const size = saveAccountBackupFile(normalized, profRes.profile);
+    const now = Date.now();
+    acc.backupSizeBytes = size;
+    acc.lastBackupAt = now;
+    const wd = evaluateWatchdog(profRes.profile, acc.lastInGameActive);
+    acc.watchdogStatus = wd.status;
+    acc.watchdogLabel = wd.label;
+    acc.watchdogReason = wd.reason;
+    acc.lastInGameActive = wd.lastInGameActive || acc.lastInGameActive;
+    saveTrackedAccounts(accs);
+
+    res.json({
+      success: true,
+      message: `Snapshot saved successfully! (${(size / 1024).toFixed(1)} KB)`,
+      backupSizeBytes: size,
+      lastBackupAt: now,
+      account: acc
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Failed to create backup." });
+  }
+});
+
+// Admin action: Restore account from backup
+app.post(["/api/admin/accounts/restore", "/admin/accounts/restore"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  if (!acc || !acc.password) {
+    return res.status(400).json({ success: false, message: "Account credentials missing." });
+  }
+
+  const backupProfile = loadAccountBackupFile(normalized);
+  if (!backupProfile) {
+    return res.status(404).json({ success: false, message: "No backup snapshot exists for this account." });
+  }
+
+  try {
+    const loginRes = await CarXClient.authenticate("login", acc.email, acc.password);
+    if (!loginRes.success || !loginRes.token) {
+      return res.status(400).json({ success: false, message: loginRes.message || "CarX login failed." });
+    }
+
+    const saveRes = await CarXClient.saveProfile(
+      loginRes.token,
+      backupProfile,
+      loginRes.userId,
+      loginRes.deviceId,
+      loginRes.uniqueId
+    );
+
+    if (!saveRes.success) {
+      return res.status(400).json({ success: false, message: saveRes.message || "CarX restore save failed." });
+    }
+
+    res.json({
+      success: true,
+      message: "Account profile backup successfully restored to CarX Street server! Restart the game to see changes."
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Restore failed." });
+  }
+});
+
+// Admin action: Delete tracked account record and backup file
+app.post(["/api/admin/accounts/delete", "/admin/accounts/delete"], authMiddleware, async (req, res) => {
+  const role = (req as any).role;
+  if (role !== "owner" && role !== "admin") {
+    return res.status(403).json({ success: false, message: "Forbidden. Admin access required." });
+  }
+
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  delete accs[normalized];
+  saveTrackedAccounts(accs);
+  deleteAccountBackupFile(normalized);
+
+  res.json({ success: true, message: `Account ${normalized} and its backup were deleted from tracking.` });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 👤 USER / CLIENT: OPTIONAL BACKUP & WATCHDOG CONTROLS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Get backup & watchdog status for current connected account
+app.all(["/api/carx/backup/status", "/carx/backup/status"], authMiddleware, async (req, res) => {
+  const email = (req.query.email || req.body.email || "").toString().toLowerCase().trim();
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const accs = loadTrackedAccounts();
+  const acc = accs[email];
+  if (!acc) {
+    return res.json({
+      success: true,
+      backupEnabled: false,
+      adminBackupBlocked: false,
+      lastBackupAt: null,
+      backupSizeBytes: 0,
+      watchdogStatus: "unverified",
+      watchdogLabel: "⚪ UNVERIFIED / NEVER PLAYED",
+      watchdogReason: "No gameplay recorded yet."
+    });
+  }
+
+  res.json({
+    success: true,
+    backupEnabled: acc.backupEnabled,
+    adminBackupBlocked: acc.adminBackupBlocked,
+    lastBackupAt: acc.lastBackupAt,
+    backupSizeBytes: acc.backupSizeBytes || 0,
+    watchdogStatus: acc.watchdogStatus,
+    watchdogLabel: acc.watchdogLabel,
+    watchdogReason: acc.watchdogReason,
+    lastInGameActive: acc.lastInGameActive
+  });
+});
+
+// User toggle backup feature on/off (optional)
+app.post(["/api/carx/backup/toggle", "/carx/backup/toggle"], authMiddleware, async (req, res) => {
+  const { email, enabled } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  let acc = accs[normalized];
+  if (!acc) {
+    acc = await recordAccountActivity(normalized);
+  }
+
+  if (acc.adminBackupBlocked && enabled) {
+    return res.status(403).json({
+      success: false,
+      message: "⚠️ Backup feature disabled by administrator. You cannot enable backup for this account."
+    });
+  }
+
+  acc.backupEnabled = !!enabled;
+  saveTrackedAccounts(accs);
+
+  res.json({
+    success: true,
+    message: acc.backupEnabled ? "Auto-backup enabled for this account." : "Auto-backup disabled for this account.",
+    backupEnabled: acc.backupEnabled,
+    adminBackupBlocked: acc.adminBackupBlocked
+  });
+});
+
+// User instant backup save
+app.post(["/api/carx/backup/save", "/carx/backup/save"], authMiddleware, async (req, res) => {
+  const { email, token, userId, deviceId, uniqueId } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  if (acc && acc.adminBackupBlocked) {
+    return res.status(403).json({ success: false, message: "Backup feature has been shut off by administrator." });
+  }
+
+  try {
+    let activeToken = token;
+    let activeUserId = userId;
+
+    if (!activeToken && acc && acc.password) {
+      const loginRes = await CarXClient.authenticate("login", acc.email, acc.password, deviceId, uniqueId);
+      if (loginRes.success) {
+        activeToken = loginRes.token;
+        activeUserId = loginRes.userId;
+      }
+    }
+
+    if (!activeToken) {
+      return res.status(400).json({ success: false, message: "Token or credentials required to fetch profile for backup." });
+    }
+
+    const profRes = await CarXClient.getProfile(activeToken, activeUserId, deviceId, uniqueId);
+    if (!profRes || !profRes.profile) {
+      return res.status(400).json({ success: false, message: "Failed to fetch profile snapshot from game server." });
+    }
+
+    const size = saveAccountBackupFile(normalized, profRes.profile);
+    const now = Date.now();
+    const updated = await recordAccountActivity(normalized, undefined, activeUserId, (req as any).licenseKey, (req as any).role, profRes.profile);
+    if (updated) {
+      updated.backupSizeBytes = size;
+      updated.lastBackupAt = now;
+      saveTrackedAccounts(loadTrackedAccounts());
+    }
+
+    res.json({
+      success: true,
+      message: `Profile backup saved successfully (${(size / 1024).toFixed(1)} KB)!`,
+      backupSizeBytes: size,
+      lastBackupAt: now
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Failed to save backup." });
+  }
+});
+
+// User restore backup
+app.post(["/api/carx/backup/restore", "/carx/backup/restore"], authMiddleware, async (req, res) => {
+  const { email, password, token, userId, deviceId, uniqueId } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const normalized = email.toLowerCase().trim();
+  const backupProfile = loadAccountBackupFile(normalized);
+  if (!backupProfile) {
+    return res.status(404).json({ success: false, message: "No backup snapshot exists for this account." });
+  }
+
+  const accs = loadTrackedAccounts();
+  const acc = accs[normalized];
+  const pass = password || acc?.password || getSavedCredentials().saved_passwords?.[normalized];
+
+  try {
+    let activeToken = token;
+    let activeUserId = userId || acc?.carxId;
+
+    if (!activeToken && pass) {
+      const loginRes = await CarXClient.authenticate("login", normalized, pass, deviceId, uniqueId);
+      if (loginRes.success) {
+        activeToken = loginRes.token;
+        activeUserId = loginRes.userId;
+      }
+    }
+
+    if (!activeToken) {
+      return res.status(400).json({ success: false, message: "Active session token or password required to restore backup." });
+    }
+
+    const saveRes = await CarXClient.saveProfile(activeToken, backupProfile, activeUserId, deviceId, uniqueId);
+    if (!saveRes.success) {
+      return res.status(400).json({ success: false, message: saveRes.message || "Server save failed during restore." });
+    }
+
+    res.json({
+      success: true,
+      message: "Backup profile successfully restored to server! Please completely restart your CarX Street game."
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || "Restore failed." });
+  }
+});
+
 // CarX Account Login
 app.post(["/api/carx/login", "/carx/login"], authMiddleware, async (req, res) => {
   const { email, password, deviceId, uniqueId } = req.body;
@@ -5099,6 +5818,16 @@ app.post(["/api/carx/login", "/carx/login"], authMiddleware, async (req, res) =>
 
   const result = await CarXClient.authenticate("login", email, password, deviceId, uniqueId);
   await CarXClient.fetchAndAttachProfileStats(result);
+  if (result.success) {
+    recordAccountActivity(
+      email,
+      password,
+      result.userId,
+      (req as any).licenseKey,
+      (req as any).role,
+      result.stats || result.data
+    ).catch(() => {});
+  }
   res.json(result);
 });
 
@@ -5168,6 +5897,14 @@ app.post(["/api/carx/register", "/carx/register"], authMiddleware, async (req, r
     }
 
     await CarXClient.fetchAndAttachProfileStats(result);
+    recordAccountActivity(
+      email,
+      password,
+      result.userId,
+      (req as any).licenseKey,
+      (req as any).role,
+      result.stats || result.data
+    ).catch(() => {});
   }
   res.json({ ...result, email, password });
 });
@@ -5182,12 +5919,22 @@ app.post(["/api/carx/verify", "/carx/verify"], authMiddleware, async (req, res) 
 
   const result = await CarXClient.verifyAccount(email, password, code, undefined, deviceId, uniqueId);
   await CarXClient.fetchAndAttachProfileStats(result);
+  if (result.success) {
+    recordAccountActivity(
+      email,
+      password,
+      result.userId,
+      (req as any).licenseKey,
+      (req as any).role,
+      result.stats || result.data
+    ).catch(() => {});
+  }
   res.json(result);
 });
 
 // CarX Fetch Real Profile Stats
 app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res) => {
-  const { token, userId, deviceId, uniqueId } = req.body;
+  const { token, userId, deviceId, uniqueId, email } = req.body;
   if (!token) {
     return res.status(400).json({ success: false, message: "Token is required." });
   }
@@ -5236,6 +5983,11 @@ app.post(["/api/carx/profile", "/carx/profile"], authMiddleware, async (req, res
     stats.isBanned = isBanned;
     if (isBanned) {
       stats.banReason = stateObj?.ban_reason || stateObj?.reason || "Account suspended on CarX servers";
+    }
+
+    if (email || profile?.account?.email || profile?.email) {
+      const accEmail = email || profile?.account?.email || profile?.email;
+      recordAccountActivity(accEmail, undefined, userId, (req as any).licenseKey, (req as any).role, profile).catch(() => {});
     }
 
     return res.json({
