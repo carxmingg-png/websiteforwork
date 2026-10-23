@@ -1,0 +1,2165 @@
+{
+  "date_time": "2026-08-06 01:36:25",
+  "data_version": 73,
+  "model_upgrade_version": 1,
+  "messaging_version": 13,
+  "is_actual_clubs_send": false,
+  "did_receive_currency_first_purchase_bonus": false,
+  "game_world_parts": {
+    "industrial": {
+      "unlocked": true
+    },
+    "midtown": {
+      "unlocked": true
+    },
+    "suburb": {
+      "unlocked": true
+    },
+    "port": {
+      "unlocked": true
+    },
+    "mountain": {},
+    "sunset": {}
+  },
+  "current_car_id": "1000",
+  "styling_custom_paints_presets": {
+    "seed": 0,
+    "items": {}
+  },
+  "consumable_wheel_tires": {
+    "seed": 0,
+    "items": {
+      "wheel_tires_set_stock": {
+        "__desc_id": "wheel_tires_set_stock",
+        "count": 5
+      }
+    }
+  },
+  "locations": {
+    "default": {
+      "location_objects_set": {
+        "keys": [
+          "styling_01",
+          "styling_02",
+          "styling_03",
+          "styling_04",
+          "styling_05",
+          "tuning_01",
+          "tuning_02",
+          "tuning_03",
+          "tuning_04",
+          "tuning_05",
+          "tuning_06",
+          "gas_station_0",
+          "gas_station_1",
+          "gas_station_2",
+          "gas_station_3",
+          "gas_station_4",
+          "gas_station_5",
+          "gas_station_6",
+          "gas_station_7",
+          "gas_station_8",
+          "gas_station_9",
+          "gas_station_10",
+          "gas_station_11",
+          "gas_station_12",
+          "gas_station_13",
+          "gas_station_14",
+          "gas_station_15",
+          "gas_station_16",
+          "gas_station_17",
+          "gas_station_18",
+          "gas_station_38",
+          "gas_station_39",
+          "apartment_01",
+          "apartment_51",
+          "apartment_95",
+          "apartment_industrial_SP",
+          "apartment_midtown_SP",
+          "apartment_midtown2_SP",
+          "apartment_midtown3_SP",
+          "club_white_tigers",
+          "club_chimeras",
+          "club_pitons",
+          "club_drift_united",
+          "club_burnout_rangers",
+          "club_pythons",
+          "club_speedline_syndicate",
+          "club_streethunters",
+          "club_falcons_outlaws",
+          "club_savage",
+          "club_hyper_sonic",
+          "club_arctic_outlaws",
+          "club_emeralds",
+          "Industrial_apartment_1",
+          "Industrial_apartment_2",
+          "Industrial_apartment_3",
+          "Industrial_apartment_6",
+          "Midtown_apartment_1",
+          "Midtown_apartment_3",
+          "Midtown_apartment_4",
+          "Midtown_apartment_7",
+          "Midtown_apartment_8",
+          "Midtown_apartment_9",
+          "Midtown_apartment_10",
+          "Midtown_apartment_11",
+          "Midtown_apartment_12",
+          "Prigorod_apartment_1",
+          "Prigorod_apartment_2",
+          "Prigorod_apartment_3",
+          "Prigorod_apartment_4",
+          "Prigorod_apartment_5",
+          "Prigorod_apartment_7",
+          "car_showroom_0",
+          "car_showroom_1",
+          "car_showroom_2",
+          "car_market_0",
+          "midtown_race_simple_sprint_DM03_net_duel",
+          "midtown_race_simple_sprint_DM06_net_duel",
+          "midtown_race_simple_sprint_DM08_net_duel",
+          "midtown_race_simple_sprint_DM023_net_duel",
+          "midtown_race_simple_sprint_DM027_net_duel",
+          "midtown_race_simple_sprint_DM043_net_duel",
+          "midtown_race_simple_sprint_DM044_net_duel",
+          "midtown_race_simple_sprint_DM045_net_duel",
+          "midtown_race_simple_sprint_DM046_net_duel",
+          "midtown_race_simple_sprint_DM060_net_duel",
+          "port_race_simple_sprint_DM01_net_duel",
+          "prigorod_race_simple_ring_01ST_net_duel",
+          "prigorod_race_simple_ring_04ST_net_duel",
+          "prigorod_race_simple_ring_ST001_net_duel",
+          "prigorod_race_simple_ring_ST004_net_duel",
+          "prigorod_race_simple_sprint_ST001_net_duel",
+          "highway_race_simple_sprint_DM04_net_duel",
+          "highway_race_simple_sprint_DM05_net_duel",
+          "industrial_race_simple_ring_01dima_net_duel",
+          "industrial_race_simple_ring_DM010_net_duel",
+          "midtown_race_simple_ring_DM020_net_duel",
+          "midtown_race_simple_sprint_6stas_net_duel",
+          "midtown_race_simple_sprint_23stas_net_duel",
+          "midtown_race_simple_sprint_DM02_net_duel",
+          "midtown_race_simple_ring_DM05_net_duel",
+          "midtown_race_simple_sprint_DM10_net_duel",
+          "prigorod_race_simple_ring_03ST_net_duel",
+          "prigorod_race_simple_ring_02ST_net_duel",
+          "prigorod_race_simple_sprint_02ST_net_duel",
+          "industrial_race_simple_sprint_DM010_net_duel",
+          "midtown_race_simple_sprint_DM03_speed_league",
+          "midtown_race_simple_sprint_DM06_speed_league",
+          "midtown_race_simple_sprint_DM08_speed_league",
+          "midtown_race_simple_sprint_DM023_speed_league",
+          "midtown_race_simple_sprint_DM027_speed_league",
+          "midtown_race_simple_sprint_DM043_speed_league",
+          "midtown_race_simple_sprint_DM044_speed_league",
+          "midtown_race_simple_sprint_DM045_speed_league",
+          "midtown_race_simple_sprint_DM046_speed_league",
+          "midtown_race_simple_sprint_DM060_speed_league",
+          "port_race_simple_sprint_DM01_speed_league",
+          "prigorod_race_simple_ring_01ST_speed_league",
+          "prigorod_race_simple_ring_04ST_speed_league",
+          "prigorod_race_simple_ring_ST001_speed_league",
+          "prigorod_race_simple_ring_ST004_speed_league",
+          "prigorod_race_simple_sprint_ST001_speed_league",
+          "highway_race_simple_sprint_DM04_speed_league",
+          "highway_race_simple_sprint_DM05_speed_league",
+          "industrial_race_simple_ring_01dima_speed_league",
+          "industrial_race_simple_ring_DM010_speed_league",
+          "midtown_race_simple_ring_DM020_speed_league",
+          "midtown_race_simple_sprint_6stas_speed_league",
+          "midtown_race_simple_sprint_23stas_speed_league",
+          "midtown_race_simple_sprint_DM02_speed_league",
+          "midtown_race_simple_ring_DM05_speed_league",
+          "midtown_race_simple_sprint_DM10_speed_league",
+          "prigorod_race_simple_ring_03ST_speed_league",
+          "prigorod_race_simple_ring_02ST_speed_league",
+          "prigorod_race_simple_sprint_02ST_speed_league",
+          "industrial_race_simple_sprint_DM010_speed_league",
+          "car_delivery_business",
+          "car_delivery_low",
+          "part_delivery_business",
+          "part_delivery_low",
+          "industrial_race_farm_sprint_st06",
+          "midtown_race_farm_sprint_DM03",
+          "midtown_race_farm_sprint_DM12",
+          "midtown_race_farm_drift_DM01",
+          "midtown_race_farm_drift_DM15",
+          "midtown_race_farm_drift_DM07",
+          "port_race_farm_free_drift_AO01",
+          "midtown_race_farm_free_drift_AO01",
+          "prigorod_race_farm_free_drift_AO01",
+          "port_race_farm_gymkhana_ie001",
+          "midtown_race_gymkhana_ao04",
+          "midtown_race_simple_sprint_dima02"
+        ]
+      }
+    }
+  },
+  "real_estate_slots": {
+    "apartment_01_slot_0": {},
+    "apartment_01_slot_1": {},
+    "apartment_01_slot_2": {},
+    "apartment_51_slot_0": {},
+    "apartment_51_slot_1": {},
+    "apartment_51_slot_2": {},
+    "apartment_95_slot_0": {
+      "unlocked": true,
+      "car_id": "1000"
+    },
+    "apartment_95_slot_1": {},
+    "apartment_95_slot_2": {},
+    "apartment_industrial_SP_slot_0": {},
+    "apartment_midtown_SP_slot_0": {},
+    "apartment_midtown2_SP_slot_0": {},
+    "apartment_midtown3_SP_slot_0": {},
+    "Industrial_apartment_1_slot_0": {},
+    "Industrial_apartment_1_slot_1": {},
+    "Industrial_apartment_1_slot_2": {},
+    "Industrial_apartment_2_slot_0": {},
+    "Industrial_apartment_2_slot_1": {},
+    "Industrial_apartment_2_slot_2": {},
+    "Industrial_apartment_3_slot_0": {},
+    "Industrial_apartment_3_slot_1": {},
+    "Industrial_apartment_3_slot_2": {},
+    "Industrial_apartment_4_slot_0": {},
+    "Industrial_apartment_4_slot_1": {},
+    "Industrial_apartment_4_slot_2": {},
+    "Industrial_apartment_5_slot_0": {},
+    "Industrial_apartment_5_slot_1": {},
+    "Industrial_apartment_5_slot_2": {},
+    "Industrial_apartment_6_slot_0": {},
+    "Industrial_apartment_6_slot_1": {},
+    "Industrial_apartment_6_slot_2": {},
+    "Midtown_apartment_1_slot_0": {},
+    "Midtown_apartment_1_slot_1": {},
+    "Midtown_apartment_1_slot_2": {},
+    "Midtown_apartment_2_slot_0": {},
+    "Midtown_apartment_2_slot_1": {},
+    "Midtown_apartment_2_slot_2": {},
+    "Midtown_apartment_3_slot_0": {},
+    "Midtown_apartment_3_slot_1": {},
+    "Midtown_apartment_3_slot_2": {},
+    "Midtown_apartment_4_slot_0": {},
+    "Midtown_apartment_4_slot_1": {},
+    "Midtown_apartment_4_slot_2": {},
+    "Midtown_apartment_5_slot_0": {},
+    "Midtown_apartment_5_slot_1": {},
+    "Midtown_apartment_5_slot_2": {},
+    "Midtown_apartment_6_slot_0": {},
+    "Midtown_apartment_6_slot_1": {},
+    "Midtown_apartment_6_slot_2": {},
+    "Midtown_apartment_7_slot_0": {},
+    "Midtown_apartment_7_slot_1": {},
+    "Midtown_apartment_7_slot_2": {},
+    "Midtown_apartment_8_slot_0": {},
+    "Midtown_apartment_8_slot_1": {},
+    "Midtown_apartment_8_slot_2": {},
+    "Midtown_apartment_9_slot_0": {},
+    "Midtown_apartment_9_slot_1": {},
+    "Midtown_apartment_9_slot_2": {},
+    "Midtown_apartment_10_slot_0": {},
+    "Midtown_apartment_10_slot_1": {},
+    "Midtown_apartment_10_slot_2": {},
+    "Midtown_apartment_11_slot_0": {},
+    "Midtown_apartment_11_slot_1": {},
+    "Midtown_apartment_11_slot_2": {},
+    "Midtown_apartment_12_slot_0": {},
+    "Midtown_apartment_12_slot_1": {},
+    "Midtown_apartment_12_slot_2": {},
+    "Mountain_apartment_1_slot_0": {},
+    "Mountain_apartment_1_slot_1": {},
+    "Mountain_apartment_1_slot_2": {},
+    "Mountain_apartment_2_slot_0": {},
+    "Mountain_apartment_2_slot_1": {},
+    "Mountain_apartment_2_slot_2": {},
+    "Mountain_apartment_3_slot_0": {},
+    "Mountain_apartment_3_slot_1": {},
+    "Mountain_apartment_3_slot_2": {},
+    "Mountain_apartment_4_slot_0": {},
+    "Mountain_apartment_4_slot_1": {},
+    "Mountain_apartment_4_slot_2": {},
+    "Mountain_apartment_5_slot_0": {},
+    "Mountain_apartment_5_slot_1": {},
+    "Mountain_apartment_5_slot_2": {},
+    "Mountain_apartment_6_slot_0": {},
+    "Mountain_apartment_6_slot_1": {},
+    "Mountain_apartment_6_slot_2": {},
+    "Mountain_apartment_7_slot_0": {},
+    "Mountain_apartment_7_slot_1": {},
+    "Mountain_apartment_7_slot_2": {},
+    "Mountain_apartment_8_slot_0": {},
+    "Mountain_apartment_8_slot_1": {},
+    "Mountain_apartment_8_slot_2": {},
+    "Mountain_apartment_9_slot_0": {},
+    "Mountain_apartment_9_slot_1": {},
+    "Mountain_apartment_9_slot_2": {},
+    "Mountain_apartment_11_slot_0": {},
+    "Mountain_apartment_11_slot_1": {},
+    "Mountain_apartment_13_slot_0": {},
+    "Mountain_apartment_13_slot_1": {},
+    "Mountain_apartment_13_slot_2": {},
+    "Mountain_apartment_14_slot_0": {},
+    "Mountain_apartment_14_slot_1": {},
+    "Mountain_apartment_14_slot_2": {},
+    "Mountain_apartment_15_slot_0": {},
+    "Mountain_apartment_15_slot_1": {},
+    "Mountain_apartment_15_slot_2": {},
+    "Mountain_apartment_16_slot_0": {},
+    "Mountain_apartment_16_slot_1": {},
+    "Mountain_apartment_17_slot_0": {},
+    "Prigorod_apartment_1_slot_0": {},
+    "Prigorod_apartment_1_slot_1": {},
+    "Prigorod_apartment_1_slot_2": {},
+    "Prigorod_apartment_2_slot_0": {},
+    "Prigorod_apartment_2_slot_1": {},
+    "Prigorod_apartment_2_slot_2": {},
+    "Prigorod_apartment_3_slot_0": {},
+    "Prigorod_apartment_3_slot_1": {},
+    "Prigorod_apartment_3_slot_2": {},
+    "Prigorod_apartment_4_slot_0": {},
+    "Prigorod_apartment_4_slot_1": {},
+    "Prigorod_apartment_4_slot_2": {},
+    "Prigorod_apartment_5_slot_0": {},
+    "Prigorod_apartment_5_slot_1": {},
+    "Prigorod_apartment_5_slot_2": {},
+    "Prigorod_apartment_6_slot_0": {},
+    "Prigorod_apartment_6_slot_1": {},
+    "Prigorod_apartment_6_slot_2": {},
+    "Prigorod_apartment_7_slot_0": {},
+    "Prigorod_apartment_7_slot_1": {},
+    "Prigorod_apartment_7_slot_2": {},
+    "Mountain_apartment_18_slot_0": {},
+    "Mountain_apartment_18_slot_1": {},
+    "Mountain_apartment_18_slot_2": {},
+    "Mountain_apartment_19_slot_0": {},
+    "Mountain_apartment_19_slot_1": {},
+    "Mountain_apartment_19_slot_2": {},
+    "Speedway_apartment_1_slot_0": {},
+    "Speedway_apartment_1_slot_1": {},
+    "Speedway_apartment_1_slot_2": {},
+    "Speedway_apartment_2_slot_0": {},
+    "Speedway_apartment_2_slot_1": {},
+    "Speedway_apartment_2_slot_2": {},
+    "Speedway_apartment_3_slot_0": {},
+    "Speedway_apartment_3_slot_1": {},
+    "Speedway_apartment_3_slot_2": {}
+  },
+  "real_estates": {
+    "apartment_01": {},
+    "apartment_51": {},
+    "apartment_95": {
+      "is_bought": true
+    },
+    "apartment_industrial_SP": {},
+    "apartment_midtown_SP": {},
+    "apartment_midtown2_SP": {},
+    "apartment_midtown3_SP": {},
+    "Industrial_apartment_1": {},
+    "Industrial_apartment_2": {},
+    "Industrial_apartment_3": {},
+    "Industrial_apartment_4": {},
+    "Industrial_apartment_5": {},
+    "Industrial_apartment_6": {},
+    "Midtown_apartment_1": {},
+    "Midtown_apartment_2": {},
+    "Midtown_apartment_3": {},
+    "Midtown_apartment_4": {},
+    "Midtown_apartment_5": {},
+    "Midtown_apartment_6": {},
+    "Midtown_apartment_7": {},
+    "Midtown_apartment_8": {},
+    "Midtown_apartment_9": {},
+    "Midtown_apartment_10": {},
+    "Midtown_apartment_11": {},
+    "Midtown_apartment_12": {},
+    "Mountain_apartment_1": {},
+    "Mountain_apartment_2": {},
+    "Mountain_apartment_3": {},
+    "Mountain_apartment_4": {},
+    "Mountain_apartment_5": {},
+    "Mountain_apartment_6": {},
+    "Mountain_apartment_7": {},
+    "Mountain_apartment_8": {},
+    "Mountain_apartment_9": {},
+    "Mountain_apartment_11": {},
+    "Mountain_apartment_13": {},
+    "Mountain_apartment_14": {},
+    "Mountain_apartment_15": {},
+    "Prigorod_apartment_1": {},
+    "Prigorod_apartment_2": {},
+    "Prigorod_apartment_3": {},
+    "Prigorod_apartment_4": {},
+    "Prigorod_apartment_5": {},
+    "Prigorod_apartment_6": {},
+    "Prigorod_apartment_7": {},
+    "Mountain_apartment_16": {},
+    "Mountain_apartment_17": {},
+    "Mountain_apartment_18": {},
+    "Mountain_apartment_19": {},
+    "Speedway_apartment_1": {},
+    "Speedway_apartment_2": {},
+    "Speedway_apartment_3": {}
+  },
+  "car_models": {
+    "keys": [
+      "toyotasupra2020"
+    ],
+    "values": [
+      1
+    ]
+  },
+  "clubs": {},
+  "resources": {
+    "soft": {
+      "amount": 21000
+    },
+    "hard": {},
+    "experience": {},
+    "total_club_race_completed": {},
+    "total_farm_race_completed": {},
+    "total_gas_station_enter": {},
+    "total_loot_count": {},
+    "total_loot_soft_amount": {},
+    "midtown_race_simple_sprint_22stas_elite_gen_trigger": {},
+    "prigorod_race_simple_gymkhana_ao01_elite_gen_trigger": {},
+    "mountain_race_simple_gymkhana_ao01_elite_gen_trigger": {},
+    "industrial_race_simple_sprint_02dima_elite_gen_trigger": {},
+    "port_race_free_drift_AO01_elite_gen_trigger": {},
+    "mountain_race_simple_sprint_DM12_elite_gen_trigger": {},
+    "prigorod_race_simple_sprint_MK01_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_DM002_elite_gen_trigger": {},
+    "midtown_race_simple_drift_DM02_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_DM08_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_ST001_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_DM010_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_DM025_elite_gen_trigger": {},
+    "industrial_race_simple_ring_DM010_elite_gen_trigger": {},
+    "mountain_race_simple_drift_DM01_elite_gen_trigger": {},
+    "mountain_race_simple_ring_DM01_elite_gen_trigger": {},
+    "mountain_race_simple_sprint_DM22_elite_gen_trigger": {},
+    "speedway_race_simple_sprint_DM01_elite_gen_trigger": {},
+    "midtown_race_simple_sprint_DM073_elite_gen_trigger": {},
+    "speedway_race_simple_sprint_DM011_elite_gen_trigger": {},
+    "nickname_change_count": {}
+  },
+  "statistics": {
+    "achievement_leaderboard_rang_10": {},
+    "achievement_leaderboard_rang_50": {},
+    "achievement_leaderboard_rang_100": {},
+    "achievement_leaderboard_rang_250": {},
+    "achievement_leaderboard_rang_500": {},
+    "statistic_car_published": {},
+    "statistic_livery_published": {},
+    "statistic_car_deliveries_completed": {},
+    "statistic_part_deliveries_completed": {},
+    "statistic_duel_won": {},
+    "statistic_total_distance": {
+      "amount": 0.067903
+    },
+    "statistic_app_launches": {
+      "amount": 1
+    },
+    "statistic_playing_time": {
+      "amount": 5.001239
+    },
+    "statistic_max_speed": {
+      "amount": 0.2145388
+    },
+    "statistic_total_hard": {},
+    "statistic_total_soft": {
+      "amount": 21000
+    },
+    "statistic_simple_gasoline_consumed": {},
+    "statistic_sports_gasoline_consumed": {},
+    "statistic_tuning_nodes_installed": {},
+    "statistic_tuning_parts_installed": {},
+    "statistic_club_sprint_races_compeleted": {},
+    "statistic_club_ring_races_compeleted": {},
+    "statistic_club_drift_races_compeleted": {},
+    "statistic_club_elite_races_compeleted": {},
+    "statistic_farm_time_races_won": {},
+    "statistic_farm_drift_races_won": {},
+    "statistic_farm_drift_races_finished": {},
+    "statistic_farm_time_races_finished": {},
+    "statistic_club_free_drift_races_compeleted": {},
+    "statistic_farm_free_drift_races_won": {},
+    "statistic_farm_free_drift_races_finished": {},
+    "statistic_club_gymkhana_races_compeleted": {},
+    "statistic_farm_gymkhana_races_won": {},
+    "statistic_farm_gymkhana_races_finished": {},
+    "statistic_game_world_part_mountain_unlocked": {}
+  },
+  "car_to_real_estate_slot": {
+    "keys": [
+      "1000"
+    ],
+    "values": [
+      "apartment_95_slot_0"
+    ]
+  },
+  "car_to_club": {
+    "keys": [],
+    "values": []
+  },
+  "race_generators": {
+    "farm_races": {
+      "races_counter": {},
+      "races_set": {
+        "keys": [
+          "industrial_race_farm_sprint_st06",
+          "midtown_race_farm_sprint_DM03",
+          "midtown_race_farm_sprint_DM12",
+          "midtown_race_farm_drift_DM01",
+          "midtown_race_farm_drift_DM15",
+          "midtown_race_farm_drift_DM07",
+          "port_race_farm_free_drift_AO01",
+          "midtown_race_farm_free_drift_AO01",
+          "prigorod_race_farm_free_drift_AO01",
+          "port_race_farm_gymkhana_ie001",
+          "midtown_race_gymkhana_ao04"
+        ]
+      }
+    },
+    "game_world_mountain_farm_races": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "game_world_sunset_farm_races": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_white_tigers_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_savage_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_chimeras_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_pitons_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_drift_united_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_burnout_rangers_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_streethunters_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_black_lotus_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_pythons_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_speedline_syndicate_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_falcons_outlaws_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_21_tribe_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_road_runner_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_western_sierra_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_speedstar_energy_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_arctic_outlaws_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_grip_masters_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_spitfire_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_hyper_sonic_elite": {
+      "races_counter": {},
+      "races_set": {}
+    },
+    "club_emeralds_elite": {
+      "races_counter": {},
+      "races_set": {}
+    }
+  },
+  "business_counter": {
+    "keys": [
+      "car_delivery_low",
+      "car_delivery_middle",
+      "car_delivery_high",
+      "part_delivery_low",
+      "part_delivery_middle",
+      "part_delivery_high"
+    ],
+    "values": [
+      1785954766,
+      1785955766,
+      1785956766,
+      1785954766,
+      1785955767,
+      1785956766
+    ]
+  },
+  "races_ts": {
+    "keys": [
+      "industrial_race_farm_sprint_st06",
+      "midtown_race_farm_sprint_DM03",
+      "midtown_race_farm_sprint_DM12",
+      "midtown_race_farm_drift_DM01",
+      "midtown_race_farm_drift_DM15",
+      "midtown_race_farm_drift_DM07",
+      "port_race_farm_free_drift_AO01",
+      "midtown_race_farm_free_drift_AO01",
+      "prigorod_race_farm_free_drift_AO01",
+      "port_race_farm_gymkhana_ie001",
+      "midtown_race_gymkhana_ao04",
+      "midtown_race_simple_sprint_dima02"
+    ],
+    "values": [
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954767,
+      1785954983
+    ]
+  },
+  "ad_reward_ts": {},
+  "race_counter": {},
+  "postprogression_counter": {},
+  "owned_styling_vinyls_categories": {},
+  "shop_owned_packs": {},
+  "transactions": {},
+  "quests": {
+    "car_choice_intro": {
+      "trigger": {},
+      "completed": true,
+      "rewarded": true
+    },
+    "move_to_apartment_intro_quest": {
+      "trigger": {},
+      "completed": true,
+      "rewarded": true
+    },
+    "move_to_gasstation_intro_quest": {
+      "trigger": {},
+      "completed": true,
+      "rewarded": true
+    },
+    "move_to_tuning_intro_quest": {
+      "trigger": {},
+      "completed": true,
+      "rewarded": true
+    },
+    "move_to_club_intro_quest": {
+      "trigger": {},
+      "completed": true,
+      "rewarded": true
+    }
+  },
+  "location_object_enter": {},
+  "collected_gift_boxes": {},
+  "collectables_events": {
+    "seed": 1,
+    "items": {
+      "0": {
+        "__desc_id": "default",
+        "event_name": "first_event",
+        "collected_objects_set": {}
+      }
+    }
+  },
+  "player_inventory": {
+    "styling_parts_collection": {
+      "seed": 0,
+      "items": {}
+    },
+    "styling_bodykits_collection": {
+      "seed": 0,
+      "items": {}
+    },
+    "builded_tuning_node_collection": {
+      "cells": {
+        "engine_0": {
+          "stack": {}
+        },
+        "engine_1": {
+          "stack": {}
+        },
+        "engine_2": {
+          "stack": {}
+        },
+        "engine_3": {
+          "stack": {}
+        },
+        "engine_4": {
+          "stack": {}
+        },
+        "transmission_0": {
+          "stack": {}
+        },
+        "transmission_1": {
+          "stack": {}
+        },
+        "transmission_2": {
+          "stack": {}
+        },
+        "transmission_3": {
+          "stack": {}
+        },
+        "transmission_4": {
+          "stack": {}
+        }
+      }
+    },
+    "tuning_parts_collection": {
+      "seed": 0,
+      "items": {}
+    }
+  },
+  "battle_pass_event_rewards": {},
+  "social_media_rewards": {},
+  "car_sharing_slots_key": {
+    "keys": [
+      "car_sharing_slot_1",
+      "car_sharing_slot_2"
+    ]
+  },
+  "profile": {
+    "nickname": "Player88951208",
+    "avatar": "avatar_default",
+    "banner": "banner_default",
+    "frame": "frame_default",
+    "favorite_achievents": {}
+  },
+  "profile_customization_set": {},
+  "emoji": {
+    "keys": [
+      "0",
+      "1",
+      "2",
+      "3"
+    ],
+    "values": [
+      "emoji_1",
+      "emoji_2",
+      "emoji_3",
+      "emoji_4"
+    ]
+  },
+  "cars": {
+    "seed": 1001,
+    "items": {
+      "1000": {
+        "tuning": {
+          "cells": {
+            "0": {
+              "stack": {
+                "id": "engine_toyotasupra2020",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "engine_block_2",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "1": {
+                        "stack": {
+                          "id": "engine_camshaft_3",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "2": {
+                        "stack": {
+                          "id": "engine_cooling_stock",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "3": {
+                        "stack": {
+                          "id": "engine_cylinder_head_6",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "engine_torque_curve_mid": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "4": {
+                        "stack": {
+                          "id": "engine_ecu_0",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "5": {
+                        "stack": {
+                          "id": "engine_exhaust_manifold_0",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "6": {
+                        "stack": {
+                          "id": "engine_exhaust_0",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "7": {
+                        "stack": {
+                          "id": "engine_fuel_system_1",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "8": {
+                        "stack": {
+                          "id": "engine_intake_manifold_1",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "9": {
+                        "stack": {
+                          "id": "engine_turbine_0",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "resources": {
+                      "resource": {},
+                      "repair_limit": {},
+                      "throttle_limit": {}
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "1": {
+              "stack": {
+                "id": "body_toyotasupra2020_stage3",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "body_weight_reduction_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "mass": {},
+                                "mass_up_percent": {},
+                                "mass_front_percent": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "1": {
+                        "stack": {
+                          "id": "body_front_aero_3",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "aero_sx": {},
+                                "aero_front_downforce": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "2": {
+                        "stack": {
+                          "id": "body_rear_aero_3",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "aero_rear_downforce": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "3": {
+                        "stack": {
+                          "id": "body_fuel_tank_5",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "4": {
+                        "stack": {
+                          "id": "body_strengthening_0",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "resources": {
+                      "resource": {},
+                      "repair_limit": {}
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "2": {
+              "stack": {
+                "id": "transmission_toyotasupra2020",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "transmission_gearbox_stock",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "1": {
+                        "stack": {
+                          "id": "transmission_clutch_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "gear_shifting_delay": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "2": {
+                        "stack": {
+                          "id": "transmission_differential_clutch_2_1",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "transmission_rear_diff_preload": {},
+                                "transmission_rear_diff_lock_coast": {},
+                                "transmission_rear_diff_lock_power": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "3": {
+                        "stack": {
+                          "id": "transmission_gear_drive_rwd_stock",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "resources": {
+                      "resource": {},
+                      "repair_limit": {}
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "3": {
+              "stack": {
+                "id": "suspension_toyotasupra2020",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "suspension_springs_front_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_front_spring_way": {},
+                                "suspension_front_spring_stiffness": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "1": {
+                        "stack": {
+                          "id": "suspension_springs_rear_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_rear_spring_way": {},
+                                "suspension_rear_spring_stiffness": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "2": {
+                        "stack": {
+                          "id": "suspension_shocks_front_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_front_fast_bump": {},
+                                "suspension_front_slow_bump": {},
+                                "suspension_front_fast_rebound": {},
+                                "suspension_front_slow_rebound": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "3": {
+                        "stack": {
+                          "id": "suspension_shocks_rear_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_rear_fast_bump": {},
+                                "suspension_rear_slow_bump": {},
+                                "suspension_rear_fast_rebound": {},
+                                "suspension_rear_slow_rebound": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "4": {
+                        "stack": {
+                          "id": "suspension_stabs_front_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "5": {
+                        "stack": {
+                          "id": "suspension_stabs_rear_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "6": {
+                        "stack": {
+                          "id": "suspension_arms_front_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_front_toe": {},
+                                "suspension_front_lock": {},
+                                "suspension_front_camber": {},
+                                "suspension_front_caster": {},
+                                "suspension_front_ackerman": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "7": {
+                        "stack": {
+                          "id": "suspension_arms_rear_4",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "suspension_rear_toe": {},
+                                "suspension_rear_camber": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "8": {
+                        "stack": {
+                          "id": "suspension_brakes_2",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "brake_max_torque": {},
+                                "brake_front_percent": {}
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "resources": {
+                      "resource": {},
+                      "repair_limit": {}
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "4": {
+              "stack": {
+                "id": "default_wheels",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "wheel_rim_front_45",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "1": {
+                        "stack": {
+                          "id": "wheel_tyre_front_13",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "wheel_front_tyre_pressure": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "2": {
+                        "stack": {
+                          "id": "wheel_rim_rear_45",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "3": {
+                        "stack": {
+                          "id": "wheel_tyre_rear_13",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {
+                                "wheel_rear_tyre_pressure": {}
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "4": {
+                        "stack": {
+                          "id": "wheel_spacers_front_2",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      },
+                      "5": {
+                        "stack": {
+                          "id": "wheel_spacers_rear_2",
+                          "_lv": {
+                            "value": {
+                              "stat_tunes": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "resources": {
+                      "resource": {},
+                      "repair_limit": {}
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "5": {
+              "stack": {
+                "id": "styling_stock",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "styling_cage": {
+                        "stack": {
+                          "id": "toyotasupra2020_cg_cm_19",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_roof": {
+                        "stack": {
+                          "id": "toyotasupra2020_rf_dr_46",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_doors": {
+                        "stack": {
+                          "id": "toyotasupra2020_dr_sx_124",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_trunk": {
+                        "stack": {
+                          "id": "toyotasupra2020_tr_sk_59",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_bonnet": {
+                        "stack": {
+                          "id": "toyotasupra2020_bn_sx_125",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_skirts": {
+                        "stack": {
+                          "id": "toyotasupra2020_sk_sx_123",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_chassis": {
+                        "stack": {
+                          "id": "toyotasupra2020_ch_sx_116",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_exhaust": {
+                        "stack": {
+                          "id": "toyotasupra2020_ex_me_31",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_mirrors": {
+                        "stack": {
+                          "id": "toyotasupra2020_mr_rt_44",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_shifter": {
+                        "stack": {
+                          "id": "toyotasupra2020_sh_ct_36",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "handle": {
+                                  "color": "#9F9F9FFF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_spoiler": {
+                        "stack": {
+                          "id": "toyotasupra2020_sp_sx_126",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_neon_rear": {
+                        "stack": {
+                          "id": "neon_rear_static",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#00000000"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_neon_side": {
+                        "stack": {
+                          "id": "neon_side_static",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#00000000"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_seat_left": {
+                        "stack": {
+                          "id": "toyotasupra2020_sl_ct_115",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "base": {
+                                  "color": "#373737FF"
+                                },
+                                "bottom": {
+                                  "color": "#373737FF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_wheel_rim": {
+                        "stack": {
+                          "id": "wheel_rim_1322",
+                          "_lv": {
+                            "value": {
+                              "rim_paint": {
+                                "color": "#DCDCDCFF",
+                                "material": 1
+                              },
+                              "spokes_paint": {
+                                "color": "#DCDCDCFF",
+                                "material": 1
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_hand_brake": {
+                        "stack": {
+                          "id": "toyotasupra2020_hb_sg_83",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "handle": {
+                                  "color": "#9F9F9FFF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_neon_front": {
+                        "stack": {
+                          "id": "neon_front_static",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#00000000"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_seat_right": {
+                        "stack": {
+                          "id": "toyotasupra2020_sr_ct_101",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "base": {
+                                  "color": "#373737FF"
+                                },
+                                "bottom": {
+                                  "color": "#373737FF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_suspension": {
+                        "stack": {
+                          "id": "suspension_mac_pherson",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "SuspensionArm": {
+                                  "color": "#505050FF"
+                                },
+                                "SuspensionRack": {
+                                  "color": "#505050FF"
+                                },
+                                "SuspensionSpring": {
+                                  "color": "#505050FF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_brake_rotor": {
+                        "stack": {
+                          "id": "brake_rotor_5",
+                          "_lv": {
+                            "value": {}
+                          }
+                        }
+                      },
+                      "styling_bumper_rear": {
+                        "stack": {
+                          "id": "toyotasupra2020_br_sx_122",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_lights_rear": {
+                        "stack": {
+                          "id": "toyotasupra2020_lr_sk_40",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_bumper_front": {
+                        "stack": {
+                          "id": "toyotasupra2020_bf_sx_118",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_lights_front": {
+                        "stack": {
+                          "id": "toyotasupra2020_lf_rt_38",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              },
+                              "part_deformation": {}
+                            }
+                          }
+                        }
+                      },
+                      "styling_number_plate": {
+                        "stack": {
+                          "id": "number_plate_stock",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#FFFFFFFF"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_brake_caliper": {
+                        "stack": {
+                          "id": "brake_caliper_1",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#C0C0C0FF"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_steering_wheel": {
+                        "stack": {
+                          "id": "toyotasupra2020_sw_sg_75",
+                          "_lv": {
+                            "value": {
+                              "paints": {
+                                "spokes": {
+                                  "color": "#9F9F9FFF"
+                                },
+                                "strings": {
+                                  "color": "#373737FF"
+                                },
+                                "alcantar": {
+                                  "color": "#2B2B2BFF"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_general_interior": {
+                        "stack": {
+                          "id": "toyotasupra2020_ir_sk_35",
+                          "_lv": {
+                            "value": {}
+                          }
+                        }
+                      },
+                      "styling_exhaust_flame_nitro": {
+                        "stack": {
+                          "id": "exhaust_flame_nitro_3",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "styling_exhaust_flame_back_fire": {
+                        "stack": {
+                          "id": "exhaust_flame_back_fire_2",
+                          "_lv": {
+                            "value": {
+                              "paint": {
+                                "color": "#999DA0FF",
+                                "material": 0
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "glass_paint": {
+                      "color": "#FFFFFFFF",
+                      "material": 7
+                    },
+                    "smoke_paint": {
+                      "color": "#FFFFFFFF"
+                    },
+                    "headlight_paint": {
+                      "color": "#FFFFFFFF"
+                    },
+                    "fog_light_glass_paint": {
+                      "color": "#FFFFFFFF",
+                      "material": 7
+                    },
+                    "rear_light_glass_paint": {
+                      "color": "#FFFFFFFF",
+                      "material": 7
+                    },
+                    "front_light_glass_paint": {
+                      "color": "#FFFFFFFF",
+                      "material": 7
+                    }
+                  }
+                }
+              }
+            },
+            "6": {
+              "stack": {
+                "id": "nitro_stock",
+                "_lv": {
+                  "value": {
+                    "cells": {},
+                    "resources": {},
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "7": {
+              "stack": {
+                "id": "wheel_tires_stock",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {
+                          "id": "wheel_tires_set_0",
+                          "_lv": {
+                            "value": {
+                              "resources": {
+                                "rear_left_wheel_tire": {
+                                  "amount": 99.99849
+                                },
+                                "front_left_wheel_tire": {
+                                  "amount": 100
+                                },
+                                "rear_right_wheel_tire": {
+                                  "amount": 99.99875
+                                },
+                                "front_right_wheel_tire": {
+                                  "amount": 100
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "parts_collection": {
+                      "seed": 0,
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            },
+            "8": {
+              "stack": {
+                "id": "styling_vinyls_stock",
+                "_lv": {
+                  "value": {
+                    "cells": {
+                      "0": {
+                        "stack": {}
+                      },
+                      "1": {
+                        "stack": {}
+                      },
+                      "2": {
+                        "stack": {}
+                      },
+                      "3": {
+                        "stack": {}
+                      },
+                      "4": {
+                        "stack": {}
+                      },
+                      "5": {
+                        "stack": {}
+                      },
+                      "6": {
+                        "stack": {}
+                      },
+                      "7": {
+                        "stack": {}
+                      },
+                      "8": {
+                        "stack": {}
+                      },
+                      "9": {
+                        "stack": {}
+                      },
+                      "10": {
+                        "stack": {}
+                      },
+                      "11": {
+                        "stack": {}
+                      },
+                      "12": {
+                        "stack": {}
+                      },
+                      "13": {
+                        "stack": {}
+                      },
+                      "14": {
+                        "stack": {}
+                      },
+                      "15": {
+                        "stack": {}
+                      },
+                      "16": {
+                        "stack": {}
+                      },
+                      "17": {
+                        "stack": {}
+                      },
+                      "18": {
+                        "stack": {}
+                      },
+                      "19": {
+                        "stack": {}
+                      },
+                      "20": {
+                        "stack": {}
+                      },
+                      "21": {
+                        "stack": {}
+                      },
+                      "22": {
+                        "stack": {}
+                      },
+                      "23": {
+                        "stack": {}
+                      },
+                      "24": {
+                        "stack": {}
+                      },
+                      "25": {
+                        "stack": {}
+                      },
+                      "26": {
+                        "stack": {}
+                      },
+                      "27": {
+                        "stack": {}
+                      },
+                      "28": {
+                        "stack": {}
+                      },
+                      "29": {
+                        "stack": {}
+                      },
+                      "30": {
+                        "stack": {}
+                      },
+                      "31": {
+                        "stack": {}
+                      },
+                      "32": {
+                        "stack": {}
+                      },
+                      "33": {
+                        "stack": {}
+                      },
+                      "34": {
+                        "stack": {}
+                      },
+                      "35": {
+                        "stack": {}
+                      },
+                      "36": {
+                        "stack": {}
+                      },
+                      "37": {
+                        "stack": {}
+                      },
+                      "38": {
+                        "stack": {}
+                      },
+                      "39": {
+                        "stack": {}
+                      },
+                      "40": {
+                        "stack": {}
+                      },
+                      "41": {
+                        "stack": {}
+                      },
+                      "42": {
+                        "stack": {}
+                      },
+                      "43": {
+                        "stack": {}
+                      },
+                      "44": {
+                        "stack": {}
+                      },
+                      "45": {
+                        "stack": {}
+                      },
+                      "46": {
+                        "stack": {}
+                      },
+                      "47": {
+                        "stack": {}
+                      },
+                      "48": {
+                        "stack": {}
+                      },
+                      "49": {
+                        "stack": {}
+                      },
+                      "50": {
+                        "stack": {}
+                      },
+                      "51": {
+                        "stack": {}
+                      },
+                      "52": {
+                        "stack": {}
+                      },
+                      "53": {
+                        "stack": {}
+                      },
+                      "54": {
+                        "stack": {}
+                      },
+                      "55": {
+                        "stack": {}
+                      },
+                      "56": {
+                        "stack": {}
+                      },
+                      "57": {
+                        "stack": {}
+                      },
+                      "58": {
+                        "stack": {}
+                      },
+                      "59": {
+                        "stack": {}
+                      },
+                      "60": {
+                        "stack": {}
+                      },
+                      "61": {
+                        "stack": {}
+                      },
+                      "62": {
+                        "stack": {}
+                      },
+                      "63": {
+                        "stack": {}
+                      },
+                      "64": {
+                        "stack": {}
+                      },
+                      "65": {
+                        "stack": {}
+                      },
+                      "66": {
+                        "stack": {}
+                      },
+                      "67": {
+                        "stack": {}
+                      },
+                      "68": {
+                        "stack": {}
+                      },
+                      "69": {
+                        "stack": {}
+                      },
+                      "70": {
+                        "stack": {}
+                      },
+                      "71": {
+                        "stack": {}
+                      },
+                      "72": {
+                        "stack": {}
+                      },
+                      "73": {
+                        "stack": {}
+                      },
+                      "74": {
+                        "stack": {}
+                      },
+                      "75": {
+                        "stack": {}
+                      },
+                      "76": {
+                        "stack": {}
+                      },
+                      "77": {
+                        "stack": {}
+                      },
+                      "78": {
+                        "stack": {}
+                      },
+                      "79": {
+                        "stack": {}
+                      },
+                      "80": {
+                        "stack": {}
+                      },
+                      "81": {
+                        "stack": {}
+                      },
+                      "82": {
+                        "stack": {}
+                      },
+                      "83": {
+                        "stack": {}
+                      },
+                      "84": {
+                        "stack": {}
+                      },
+                      "85": {
+                        "stack": {}
+                      },
+                      "86": {
+                        "stack": {}
+                      },
+                      "87": {
+                        "stack": {}
+                      },
+                      "88": {
+                        "stack": {}
+                      },
+                      "89": {
+                        "stack": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "body_kit": "toyotasupra2020_streetx_bkit",
+        "__desc_id": "toyotasupra2020",
+        "resources": {
+          "toyotasupra2020_cbw_bkit_sale_factor": {},
+          "toyotasupra2020_rnt_bkit_sale_factor": {},
+          "toyotasupra2020_stock_bkit_sale_factor": {},
+          "toyotasupra2020_dmaster_bkit_sale_factor": {},
+          "toyotasupra2020_missile_bkit_sale_factor": {},
+          "toyotasupra2020_streetx_bkit_sale_factor": {}
+        },
+        "gasoline_id": "sports_gasoline",
+        "body_kit_set": {
+          "keys": [
+            "toyotasupra2020_stock_bkit",
+            "toyotasupra2020_streetx_bkit"
+          ]
+        },
+        "vinyls_slots": {
+          "seed": 0,
+          "items": {
+            "vinyls_slot_0": {
+              "__desc_id": "vinyls_slot_0",
+              "is_player_author": true,
+              "vinyls": {
+                "seed": 0,
+                "items": {}
+              }
+            }
+          }
+        },
+        "body_part_set": {
+          "keys": [
+            "toyotasupra2020_ch_sk_25",
+            "toyotasupra2020_bf_sk_12",
+            "toyotasupra2020_br_sk_18",
+            "toyotasupra2020_sk_sk_52",
+            "toyotasupra2020_dr_sk_29",
+            "toyotasupra2020_rf_sk_47",
+            "toyotasupra2020_mr_sk_45",
+            "toyotasupra2020_bn_sk_6",
+            "toyotasupra2020_tr_sk_59",
+            "toyotasupra2020_lf_sk_39",
+            "toyotasupra2020_lr_sk_40",
+            "toyotasupra2020_ex_sk_33",
+            "toyotasupra2020_ir_sk_35",
+            "toyotasupra2020_sl_sk_60",
+            "toyotasupra2020_sr_sk_66",
+            "toyotasupra2020_sw_sk_72",
+            "toyotasupra2020_hb_sk_78",
+            "toyotasupra2020_sh_sk_84",
+            "toyotasupra2020_db_sk_91",
+            "toyotasupra2020_sp_sk_100",
+            "toyotasupra2020_cg_sk_103",
+            "toyotasupra2020_bn_sx_125",
+            "toyotasupra2020_sh_ct_36",
+            "toyotasupra2020_hb_sg_83",
+            "toyotasupra2020_sw_sg_75",
+            "toyotasupra2020_sr_ct_101",
+            "toyotasupra2020_sl_ct_115",
+            "toyotasupra2020_sp_sx_126",
+            "toyotasupra2020_sk_sx_123",
+            "toyotasupra2020_mr_rt_44",
+            "toyotasupra2020_lf_rt_38",
+            "toyotasupra2020_ex_me_31",
+            "toyotasupra2020_dr_sx_124",
+            "toyotasupra2020_ch_sx_116",
+            "toyotasupra2020_cg_cm_19",
+            "toyotasupra2020_br_sx_122",
+            "toyotasupra2020_bf_sx_118",
+            "toyotasupra2020_rf_dr_46",
+            "wheel_rim_1322",
+            "brake_rotor_5",
+            "brake_caliper_1",
+            "suspension_mac_pherson",
+            "neon_front_static",
+            "neon_side_static",
+            "neon_rear_static",
+            "number_plate_stock",
+            "exhaust_flame_back_fire_2",
+            "exhaust_flame_nitro_3"
+          ]
+        },
+        "damage_decals": {},
+        "vinyl_pack_set": {},
+        "consumed_resources": {
+          "nitro": {
+            "ts": 1785838328,
+            "amount": 9999,
+            "max_amount": 9999
+          },
+          "gasoline": {
+            "ts": 1785838330,
+            "amount": 90,
+            "max_amount": 90
+          },
+          "statistic_drive_time": {
+            "amount": 392.0197
+          },
+          "statistic_total_distance": {
+            "amount": 71.79945
+          }
+        },
+        "selected_vinyls_slot": "vinyls_slot_0"
+      }
+    }
+  }
+}
